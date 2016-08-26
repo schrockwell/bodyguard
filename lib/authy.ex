@@ -4,10 +4,10 @@ defmodule Authy do
   external dependencies, so it will work in any Elixir app as a basic 
   authorization mechanism.
 
-  See the README.md for more information and examples.
+  See the readme for more information and examples.
 
   For common integration patterns in Plug-based web applications, check out
-  Authy.Controller.
+  `Authy.Controller`.
   """
 
   @doc """
@@ -20,21 +20,21 @@ defmodule Authy do
       policy_module(MyApp.User)         # => MyApp.User.Policy
       policy_module(%MyApp.User{})      # => MyApp.User.Policy
 
-  Returns :error otherwise.
+  Returns `:error` otherwise.
 
       policy_module("Derp") # => :error
 
   """
   def policy_module(nil), do: :error
   def policy_module(%{__struct__: s}), do: policy_module(s)
-  def policy_module(atom) when is_atom(atom), do: String.to_atom("#{atom}.Policy")
+  def policy_module(term) when is_atom(term), do: String.to_atom("#{term}.Policy")
   def policy_module(_), do: :error
 
   @doc """
   Returns a boolean determining if the user's action is authorized via the appropriate
-  policy module for that resource. Uses `policy_module/1` to find the module, 
-  then calls `can?/3` on it, passing in the user, the action (an atom), 
-  and the resource to authorize the action on.
+  policy module for that resource.
+
+  `policy_module/1` is used to find the module, then calls `can?(user, action, term)` on it.
 
       user = %MyApp.User{}
       post = %MyApp.Post{}
@@ -44,8 +44,6 @@ defmodule Authy do
   You can explicitly specify the policy module using the `:policy` option:
 
       Authy.authorized?(user, :show, post, policy: MyApp.DraftPost.Policy)
-  
-  If the policy module is nil, then it returns false.
   """
   def authorized?(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
@@ -53,7 +51,7 @@ defmodule Authy do
   end
 
   @doc """
-  Scope resources based on the users' authorization. 
+  Scope resources based on the current user.
 
   For example, a regular user can only see posts they have created,
   but an admin can see all posts. You can define a `scope/2` method 
@@ -64,7 +62,6 @@ defmodule Authy do
   This examples scopes an Ecto query of posts a user can see.
 
       # post_policy.ex
-
       defmodule MyApp.Post.Policy
         # A user can only see their own posts, but an admin can see all posts
         def scope(user, _action, opts \\ []) do
@@ -77,7 +74,6 @@ defmodule Authy do
       end
 
       # post_controller.ex
-
       posts = Authy.scoped(current_user, MyApp.Post) |> Repo.all
   """
   def scoped(user, action, term, opts \\ []) do

@@ -1,7 +1,24 @@
 defmodule Authy.Controller do
   @moduledoc """
-  Import this in your Phoenix or Plug application controller to gain convenience functions
+  Import this in your Phoenix or Plug application controller to gain convenience macros
   for doing authorization.
+  """
+
+  @doc """
+  Authorizes the controller action for the current user and executes the given block if successful.
+
+      def index(conn, _params) do
+        authorize Post do
+          # ...
+        end
+      end
+
+      def show(conn, %{id: id}) do
+        post = Repo.get(Post, id)
+        authorize post do
+          # ...
+        end
+      end
   """
   defmacro authorize(term, opts \\ [], [do: block]) do
     quote do
@@ -13,6 +30,23 @@ defmodule Authy.Controller do
     end
   end
 
+  @doc """
+  Scopes the current resource based on the action and user.
+
+      def index(conn, _params) do
+        authorize Post do
+          posts = scope(Post) |> Repo.all
+          # ...
+        end
+      end
+
+      def show(conn, %{id: id}) do
+        post = scope(Post) |> Repo.get(id)
+        authorize post do
+          # ...
+        end
+      end
+  """
   defmacro scope(term, opts \\ []) do
     quote do
       Authy.Controller.Helpers.conn_scope(var!(conn), unquote(term), unquote(opts))
