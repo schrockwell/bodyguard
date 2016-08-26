@@ -209,7 +209,7 @@ Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, f
 
 For plain Elixir apps, place policies in `lib/policies`. For Phoenix web apps, put them in `web/policies` instead.
 
-### Member Versus Collection actions
+### Member Versus Collection Actions
 
 For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against, e.g. `MyApp.User`.
 
@@ -248,10 +248,13 @@ Check out these other Elixir authorization libraries:
 
 ## Ideas for Future Work
 
+* Add helper for controllers that just returns a boolean (no block)
+* Add helpers for views
+* Add helpers for Phoenix sockets and channels
 * Similar to policy scopes, add **policy changesets**, which will build a changeset based on a users' privileges
 * ...?
 * Profit!
 
 ## License
 
-MIT
+MIT License, Copyright (c) 2016 Rockwell Schrock
