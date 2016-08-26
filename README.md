@@ -6,9 +6,11 @@ It also supplies some handy macros to DRY up controller actions in Phoenix and o
 
 It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Authy is coming from.
 
-## Installation
+* [Hex](https://hex.pm/packages/authy)
+* [GitHub](https://github.com/schrockwell/authy)
+* [Docs](https://hexdocs.pm/authy/)
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+## Installation
 
   1. Add `authy` to your list of dependencies in `mix.exs`:
 
