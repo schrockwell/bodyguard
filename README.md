@@ -32,7 +32,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
 ## Policies
 
-Authorization logic is contained in **policy modules** – one per resource to be authorized.
+Authorization logic is contained in **policy modules** – one module per resource to be authorized.
 
 To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` methods:
 
@@ -163,13 +163,11 @@ defmodule MyApp.AuthyCallbacks do
 end
 ```
 
-In the event that a resource is nil, you may choose to trigger either "unauthorized" or "not found" behavior. The `handle_unauthorized/1` callback will be called by default. 
-
-This can be customized at the library level by setting the `nils` config option to either `:unauthorized` or `:not_found`. It can also be customized at the controller action level by passing the exact same option to the `authorize` macro.
+In the event that a resource is nil, you may choose to trigger either "unauthorized" (default) or "not found" behavior. This can be customized at the library level by setting the `nils` config option to either `:unauthorized` or `:not_found`. It can also be customized at the action level by passing the same option to the `authorize` macro.
 
 ### Additional Options
 
-`policy`: Override the policy module
+`policy` – Override the policy module
 
 ```elixir
 Authy.authorized?(user, :show, post, policy: Admin.Policy)
@@ -177,41 +175,41 @@ Authy.scoped(user, Post, policy: Admin.Policy)
 
 # Using Authy.Controller
 authorize post, policy: Admin.policy, do: #...
-scope Post, policy: Admin.policy, do: #...
+scope(Post, policy: Admin.policy)
 ```
 
-`action`: Override the action
+`action` – Override the action
 
 ```elixir
 authorize post, action: :publish, do: #...
-scope Post, action: :publish, do: #...
+scope(Post, action: :publish)
 ```
 
-`user`: Override the current user
+`user` – Override the current user
 
 ```elixir
-authorize post, user: other_user), do: #...
-scope Post, user: other_user), do: #...
+authorize post, user: other_user, do: #...
+scope(Post, user: other_user)
 ```
 
-`nils`: Override the behavior for nil resources
+`nils` – Override the behavior for nil resources
 
 ```elixir
 authorize post, nils: :unauthorized, do: #...
-authorize post, nils: :not_found, do: #...
+authorize post, nils: :not_found
 ```
 
 ## Recommendations
 
 Here are a few helpful tips and conventions to follow when laying out Authy in your app.
 
-### Recommended Convention: File Naming and Location
+### File Naming and Location
 
 Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, for example `user_policy.ex` and `post_policy.ex`.
 
 For plain Elixir apps, place policies in `lib/policies`. For Phoenix web apps, put them in `web/policies` instead.
 
-### Recommended Convention: Member Versus Collection actions
+### Member Versus Collection actions
 
 For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against.
 
@@ -219,7 +217,7 @@ For individual resource actions like `:show`, pass in the struct data itself.
 
 For scopes, it doesn't matter if you pass in the module or the data - either will work.
 
-### Suggested Pattern: Policy Helpers
+### Suggestion: Policy Helpers
 
 Consider creating a generic **policy helper** to collect authorization logic that is common to many different parts of your application. Reuse it by importing it into more specific policies.
 
@@ -235,7 +233,7 @@ defmodule MyApp.Post.Policy do
 end
 ```
 
-### Suggested Pattern: Controller Policies
+### Suggestion: Controller Policies
 
 What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controllers' actions are locked down.
 
