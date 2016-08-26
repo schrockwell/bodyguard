@@ -20,7 +20,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
   2. If you are using Phoenix or another Plug-based app, add this configuration to `config.exs`:
 
-    ``elixir
+    ```elixir
     config :authy,
       unauthorized_handler: {MyApp.AuthyCallbacks, :handle_unauthorized},
       not_found_handler: {MyApp.AuthyCallbacks, :handle_not_found}
