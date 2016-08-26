@@ -211,9 +211,9 @@ For plain Elixir apps, place policies in `lib/policies`. For Phoenix web apps, p
 
 ### Member Versus Collection actions
 
-For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against.
+For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against, e.g. `MyApp.User`.
 
-For individual resource actions like `:show`, pass in the struct data itself.
+For individual resource actions like `:show`, pass in the struct data itself, e.g. `%MyApp.User{}`.
 
 For scopes, it doesn't matter if you pass in the module or the data - either will work.
 
@@ -239,7 +239,7 @@ What if you have a Phoenix controller that doesn't correspond to one particular 
 
 Try creating a policy for the controller itself. `MyApp.FooController.Policy` is completely acceptable.
 
-## Not What You're Lookingn For?
+## Not What You're Looking For?
 
 Check out these other Elixir authorization libraries:
 
