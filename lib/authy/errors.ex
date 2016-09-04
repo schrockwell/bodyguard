@@ -1,7 +1,7 @@
 defmodule Authy.NotAuthorizedError do
-  defexception [:message]
+  defexception [:message, :status]
 end
 
 defimpl Plug.Exception, for: Authy.NotAuthorizedError do
-  def status(_exception), do: 403 # Forbidden
+  def status(exception), do: exception.status || 403 # Forbidden
 end

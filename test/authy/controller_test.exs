@@ -16,8 +16,22 @@ defmodule Policy.HelpersTest do
   end
 
   test "authorizing a nonpermitted action raises an exception", %{conn: conn} do
-    assert_raise Authy.NotAuthorizedError, fn ->
+    try do
       Authy.Controller.authorize!(conn, %MockStruct{permit: false})
+      flunk "exception not raised"
+    rescue exception ->
+      assert Plug.Exception.status(exception) == 403
+      assert exception.message == "not authorized"
+    end
+  end
+
+  test "authorizing a nonpermitted action with a custom error status raises an exception", %{conn: conn} do
+    try do
+      Authy.Controller.authorize!(conn, %MockStruct{permit: false}, error_status: 404)
+      flunk "exception not raised"
+    rescue exception ->
+      assert Plug.Exception.status(exception) == 404
+      assert exception.message == "not authorized"
     end
   end
 
@@ -30,10 +44,15 @@ defmodule Policy.HelpersTest do
   end
 
   test "failing to authorize after verifying it is authorized is run raises an exception", %{conn: conn} do
-    assert_raise Authy.NotAuthorizedError, fn ->
+    try do
       conn
       |> Authy.Controller.verify_authorized
       |> Plug.Conn.send_resp(200, "Hello, World!")
+
+      flunk "exception not raised"
+    rescue exception ->
+      assert Plug.Exception.status(exception) == 403
+      assert exception.message == "no authorization run"
     end
   end
 

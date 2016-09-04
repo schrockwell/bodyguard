@@ -32,7 +32,10 @@ defmodule Authy.Controller do
   def authorize!(conn, term, opts \\ []) do
     case authorize(conn, term, opts) do
       {:ok, conn} -> conn
-      {:error, reason} -> raise Authy.NotAuthorizedError, message: reason
+      {:error, _reason} -> 
+        raise Authy.NotAuthorizedError,
+          message: "not authorized", 
+          status: Authy.Controller.Helpers.error_status(opts)
     end
   end
 
@@ -60,10 +63,12 @@ defmodule Authy.Controller do
 
   This is mainly used as a function plug on your controller.
   """
-  def verify_authorized(conn, _opts \\ []) do
+  def verify_authorized(conn, opts \\ []) do
     Plug.Conn.register_before_send conn, fn (after_conn) ->
       unless after_conn.private[:authy_authorized] do
-        raise Authy.NotAuthorizedError, message: "no authentication run"
+        raise Authy.NotAuthorizedError, 
+          message: "no authorization run",
+          status: Authy.Controller.Helpers.error_status(opts)
       end
 
       after_conn
@@ -131,6 +136,10 @@ defmodule Authy.Controller.Helpers do
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
     Authy.scoped(user, action, term, opts)
+  end
+
+  def error_status(opts \\ []) do
+    opts[:error_status] || 403
   end
 
   defp get_current_user(conn) do
