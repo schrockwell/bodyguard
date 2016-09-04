@@ -1,32 +1,28 @@
 defmodule Authy.Controller do
   @moduledoc """
-  Import this in your Phoenix or Plug application controller to gain convenience macros
-  for doing authorization.
+  Import this in your Phoenix or Plug application controller to gain convenience 
+  functions for performing authorization.
   """
 
   @doc """
   Authorizes the controller action for the current user and executes the given block if successful.
 
       def index(conn, _params) do
-        authorize Post do
-          # ...
-        end
+        {:ok, conn} = authorize(conn, Post)
+        # ...
       end
 
-      def show(conn, %{id: id}) do
+      def show(conn, %{"id" => id}) do
         post = Repo.get(Post, id)
-        authorize post do
-          # ...
-        end
+        {:ok, conn} = authorize(conn, post)
+        # ...
       end
   """
-  defmacro authorize(term, opts \\ [], [do: block]) do
-    quote do
-      case Authy.Controller.Helpers.conn_authorization(var!(conn), unquote(term), unquote(opts)) do
-        :authorized -> unquote(block)
-        :unauthorized -> Authy.Controller.Helpers.unauthorized!(var!(conn))
-        :not_found -> Authy.Controller.Helpers.not_found!(var!(conn))
-      end
+  def authorize(conn, term, opts \\ []) do
+    case Authy.Controller.Helpers.conn_authorization(conn, term, opts) do
+      :authorized -> {:ok, Authy.Controller.Helpers.mark_authorized(conn)}
+      :unauthorized -> {:error, :unauthorized}
+      :not_found -> {:error, :not_found}
     end
   end
 
@@ -34,23 +30,19 @@ defmodule Authy.Controller do
   Scopes the current resource based on the action and user.
 
       def index(conn, _params) do
-        authorize Post do
-          posts = scope(Post) |> Repo.all
-          # ...
-        end
+        {:ok, conn} = authorize(conn, Post)
+        posts = scope(conn, Post) |> Repo.all
+        # ...
       end
 
       def show(conn, %{id: id}) do
-        post = scope(Post) |> Repo.get(id)
-        authorize post do
-          # ...
-        end
+        post = scope(conn, Post) |> Repo.get(id)
+        {:ok, conn} = authorize(conn, post)
+        # ...
       end
   """
-  defmacro scope(term, opts \\ []) do
-    quote do
-      Authy.Controller.Helpers.conn_scope(var!(conn), unquote(term), unquote(opts))
-    end
+  def scope(conn, term, opts \\ []) do
+    Authy.Controller.Helpers.conn_scope(conn, term, opts)
   end
 end
 
@@ -59,8 +51,9 @@ defmodule Authy.Controller.Helpers do
   These are behind-the-scenes methods for handling controller authorization. These
   are only exported because the macros need to call them from other modules, 
   and we don't want to clutter up controller modules with helper functions
-  when Authy.Controller is imported. You probably don't need to call 
-  these functions directly.
+  when Authy.Controller is imported. 
+
+  You probably don't need to call these functions directly.
   """
 
   @doc """
@@ -106,39 +99,17 @@ defmodule Authy.Controller.Helpers do
     Authy.scoped(user, action, term, opts)
   end
 
-  @doc """
-  Call the "unauthorized" handler on the configured module. Raises a RuntimeError
-  if that handler is not configured.
-  """
-  def unauthorized!(conn) do
-    case Application.get_env(:authy, :unauthorized_handler) do
-      nil 
-        -> raise "You must configure an unauthorized_handler for Authy in your config.exs, 
-        like this: config :authy, unauthorized_handler: {MyHandlerModule, :handle_unauthorized}"
-      {module, function} 
-        -> apply(module, function, [conn])
-    end
-  end
-
-  @doc """
-  Call the "not found" handler on the configured module. Raises a RuntimeError
-  if that handler is not configured.
-  """
-  def not_found!(conn) do
-    case Application.get_env(:authy, :not_found_handler) do
-      nil 
-        -> raise "You must configure an not_found_handler for Authy in your config.exs, 
-        like this: config :authy, not_found_handler: {MyHandlerModule, :handle_not_found}"
-      {module, function} 
-        -> apply(module, function, [conn])
-    end
-  end
-
   defp get_current_user(conn) do
-    conn.assigns[Application.get_env(:authy, :current_user, :current_user)]
+    key = Application.get_env(:authy, :current_user, :current_user)
+    conn.assigns[key]
   end
 
   defp get_action(conn) do
     conn.assigns[:action] || conn.private[:phoenix_action]
+  end
+
+  # Copied from Plug.Conn.put_private/3
+  def mark_authorized(%{private: private} = conn) do
+    %{conn | private: Map.put(private, :authy_authorized, true)}
   end
 end

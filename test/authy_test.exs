@@ -37,45 +37,41 @@ defmodule AuthyTest do
     import Authy.Controller
 
     def index(conn, _params) do
-      authorize Post do
-        scope Post
+      with {:ok, conn} <- authorize(conn, Post) do
+        scope(conn, Post)
       end
     end
 
     def edit(conn, %{post: post}) do
-      authorize post do
-        scope post
+      with {:ok, conn} <- authorize(conn, post) do
+        scope(conn, post)
       end
     end
 
     def show(conn, %{post: post}) do
-      authorize post do
-        scope post
+      with {:ok, conn} <- authorize(conn, post) do
+        scope(conn, post)
       end
     end
 
     def show_nils_not_found(conn, %{post: post}) do
-      authorize post, nils: :not_found do
-        scope post
+      with {:ok, conn} <- authorize(conn, post, nils: :not_found) do
+        scope(conn, post)
       end
     end
 
     def show_nils_unauthorized(conn, %{post: post}) do
-      authorize post, nils: :unauthorized do
-        scope post
+      with {:ok, conn} <- authorize(conn, post, nils: :unauthorized) do
+        scope(conn, post)
       end
     end
 
     def delete(conn, %{post: post}) do
-      authorize post do
-        scope post
+      with {:ok, conn} <- authorize(conn, post) do
+        scope(conn, post)
       end
     end
   end
-
-  # The callbacks for the controller authorization
-  def handle_unauthorized(_conn), do: :unauthorized
-  def handle_not_found(_conn), do: :not_found
 
   test "determining policy modules" do
     assert policy_module(User)        == User.Policy
@@ -109,9 +105,6 @@ defmodule AuthyTest do
   end
 
   test "controller integration" do
-    Application.put_env(:authy, :unauthorized_handler, {AuthyTest, :handle_unauthorized})
-    Application.put_env(:authy, :not_found_handler, {AuthyTest, :handle_not_found})
-
     guest = %User{id: 1, role: :guest}
     admin = %User{id: 2, role: :admin}
     other = %User{id: 3, role: :guest}
@@ -130,20 +123,20 @@ defmodule AuthyTest do
 
     # Test edit action
     conn = %{assigns: %{current_user: nil}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == :unauthorized
+    assert PostController.edit(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :edit}}
     assert PostController.edit(conn, params) == :guest_posts_scope
 
     conn = %{assigns: %{current_user: other}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == :unauthorized
+    assert PostController.edit(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: admin}, private: %{phoenix_action: :edit}}
     assert PostController.edit(conn, params) == :admin_posts_scope
 
     # Test show action
     conn = %{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, params) == :unauthorized
+    assert PostController.show(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, params) == :guest_posts_scope
@@ -156,52 +149,52 @@ defmodule AuthyTest do
 
     # Test showing a nil post (not found)
     conn = %{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :unauthorized
+    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :unauthorized
+    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == :unauthorized
+    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_not_found(conn, %{post: nil}) == :not_found
+    assert PostController.show_nils_not_found(conn, %{post: nil}) == {:error, :not_found}
 
     conn = %{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :unauthorized
+    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :unauthorized
+    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
     Application.put_env(:authy, :nils, :not_found)
 
     conn = %{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :not_found
+    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :not_found
+    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == :unauthorized
+    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_not_found(conn, %{post: nil}) == :not_found
+    assert PostController.show_nils_not_found(conn, %{post: nil}) == {:error, :not_found}
 
     conn = %{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :not_found
+    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
 
     conn = %{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == :not_found
+    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
 
     # Test delete action
     conn = %{assigns: %{current_user: nil}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == :unauthorized
+    assert PostController.delete(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: guest}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == :unauthorized
+    assert PostController.delete(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: other}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == :unauthorized
+    assert PostController.delete(conn, params) == {:error, :unauthorized}
 
     conn = %{assigns: %{current_user: admin}, private: %{phoenix_action: :delete}}
     assert PostController.delete(conn, params) == :admin_posts_scope
