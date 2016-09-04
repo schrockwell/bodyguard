@@ -1,4 +1,9 @@
 defmodule Authy.NotAuthorizedError do
+  @moduledoc """
+  This exception is raised when authorization fails, or when 
+  an authorization check has not been performed by the end of
+  the Plug pipeline.
+  """
   defexception [:message, :status]
 end
 

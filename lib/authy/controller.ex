@@ -138,6 +138,11 @@ defmodule Authy.Controller.Helpers do
     Authy.scoped(user, action, term, opts)
   end
 
+  @doc """
+  Returns the Plug error status to be raised by `Authy.NotAuthorizedError`.
+  Returns 403 by default, but will be overridden by `opts[:error_status]`
+  if provided.
+  """
   def error_status(opts \\ []) do
     opts[:error_status] || 403
   end
