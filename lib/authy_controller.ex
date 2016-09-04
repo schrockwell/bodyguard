@@ -1,6 +1,6 @@
 defmodule Authy.Controller do
   @moduledoc """
-  Import this in your Phoenix or Plug application controller to gain convenience 
+  Import this in your Phoenix or Plug application controller to gain convenience
   functions for performing authorization.
   """
 
@@ -20,9 +20,19 @@ defmodule Authy.Controller do
   """
   def authorize(conn, term, opts \\ []) do
     case Authy.Controller.Helpers.conn_authorization(conn, term, opts) do
-      :authorized -> {:ok, Authy.Controller.Helpers.mark_authorized(conn)}
+      :authorized -> {:ok, mark_authorized(conn)}
       :unauthorized -> {:error, :unauthorized}
       :not_found -> {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Similar to `authorize/3` but raises `Authy.NotAuthorizedError` if no record was found.
+  """
+  def authorize!(conn, term, opts \\ []) do
+    case authorize(conn, term, opts) do
+      {:ok, conn} -> conn
+      {:error, reason} -> raise Authy.NotAuthorizedError, message: reason
     end
   end
 
@@ -44,20 +54,44 @@ defmodule Authy.Controller do
   def scope(conn, term, opts \\ []) do
     Authy.Controller.Helpers.conn_scope(conn, term, opts)
   end
+
+  @doc """
+  Raises `Authy.NotAuthorizedError` if the `conn` tries to send without any authorization being run.
+
+  This is mainly used as a function plug on your controller.
+  """
+  def verify_authorized(conn, _opts \\ []) do
+    Plug.Conn.register_before_send conn, fn (after_conn) ->
+      unless after_conn.private[:authy_authorized] do
+        raise Authy.NotAuthorizedError, message: "no authentication run"
+      end
+
+      after_conn
+    end
+  end
+
+  @doc """
+  Manually marks a `conn` as successfully authorized.
+
+  This is mainly used to satisfy `verify_authorized/2` when authorization is performed outside of Authy.
+  """
+  def mark_authorized(conn) do
+    Plug.Conn.put_private(conn, :authy_authorized, true)
+  end
 end
 
 defmodule Authy.Controller.Helpers do
   @moduledoc """
   These are behind-the-scenes methods for handling controller authorization. These
-  are only exported because the macros need to call them from other modules, 
+  are only exported because the macros need to call them from other modules,
   and we don't want to clutter up controller modules with helper functions
-  when Authy.Controller is imported. 
+  when Authy.Controller is imported.
 
   You probably don't need to call these functions directly.
   """
 
   @doc """
-  Returns an atom specifying the authorization status for the current 
+  Returns an atom specifying the authorization status for the current
   controller action. Typically this is not called directly by the developer,
   only indirectly through the Authy.Controller.authorize/2 macro.
 
@@ -83,15 +117,15 @@ defmodule Authy.Controller.Helpers do
   end
 
   @doc """
-  Returns a resource scope for a given controller action. Typically this is not 
-  called directly by the developer, only indirectly through the 
+  Returns a resource scope for a given controller action. Typically this is not
+  called directly by the developer, only indirectly through the
   Authy.Controller.scope/2 macro.
 
   Available options:
 
   * action: atom - override the controller action picked up from conn
   * user: term - override the current user picked up from conn
-  * policy: atom - override the policy determined from the term  
+  * policy: atom - override the policy determined from the term
   """
   def conn_scope(conn, term, opts \\ []) do
     action = opts[:action] || get_action(conn)
@@ -106,10 +140,5 @@ defmodule Authy.Controller.Helpers do
 
   defp get_action(conn) do
     conn.assigns[:action] || conn.private[:phoenix_action]
-  end
-
-  # Copied from Plug.Conn.put_private/3
-  def mark_authorized(%{private: private} = conn) do
-    %{conn | private: Map.put(private, :authy_authorized, true)}
   end
 end
