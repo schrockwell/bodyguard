@@ -33,7 +33,7 @@ defmodule Authy.Mixfile do
   defp package do
     [
       name: :authy,
-      maintainers: ["Rockwell Schrock"],
+      maintainers: ["Rockwell Schrock", "Ben Cates"],
       licenses: ["MIT"],
       links: %{
         "GitHub" => "https://github.com/schrockwell/authy"
