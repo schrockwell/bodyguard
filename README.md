@@ -87,29 +87,24 @@ defmodule MyApp.PostController do
   # Authy.Controller has been imported in web.ex
 
   def index(conn, _params) do
-    posts = scope(conn, Post)    # <-- posts in :index are scoped to the current user
+    posts = scope(conn, Post) |> Repo.all     # <-- posts in :index are scoped to the current user
+
     conn
-    |> authorize!(Post)          # <-- authorize :index action for Posts in general
+    |> authorize!(Post)                       # <-- authorize :index action for Posts in general
     |> render("index.html", posts: posts)
   end
 
   def show(conn, %{"id" => id}) do
-    post = 
-      scope(conn, Post)                  # <-- scope can even be used for lookup
-      |> Repo.get(id)   
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
 
     conn
-    |> authorize!(post)                  # <-- authorize the :show action for this particular post
+    |> authorize!(post)                       # <-- authorize the :show action for this post
     |> render("show.html", post: post)
   end
 
   def update(conn, %{"id" => id, "post" => post_params}) do
-    post = 
-      scope(conn, Post)                  # <-- scope can even be used for lookup
-      |> Repo.get(id)
-
-    conn = authorize!(conn, post)        # <-- authorize the :update action for this post
-
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    conn = authorize!(conn, post)             # <-- authorize the :update action for this post
     # ...
   end
 end
