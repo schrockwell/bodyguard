@@ -1,8 +1,8 @@
 # Authy – Simple Authorization
 
-Authy is a tiny Elixir authorization library that imposes a simple module naming convention to express authorization.
+Authy is a tiny authorization library that imposes a simple module naming convention to express authorization.
 
-It also supplies some handy macros to DRY up controller actions in Phoenix and other Plug-based apps.
+It supplies some handy functions to DRY up controller actions in Phoenix and other Plug-based apps.
 
 It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Authy is coming from.
 
@@ -20,17 +20,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
     end
     ```
 
-  2. If you are using Phoenix or another Plug-based app, add this configuration to `config.exs`:
-
-    ```elixir
-    config :authy,
-      unauthorized_handler: {MyApp.AuthyCallbacks, :handle_unauthorized},
-      not_found_handler: {MyApp.AuthyCallbacks, :handle_not_found}
-    ```
-
-    You'll have to define that handler module. See the Phoenix section below for more info.
-
-    Also add `import Authy.Controller` to the `controller` section of `web.ex` to make macros available.
+  2. Add `import Authy.Controller` to the `controller` section of `web.ex` to make its functions available.
 
 ## Policies
 
@@ -54,29 +44,6 @@ defmodule Post.Policy do
   # Catch-all: deny everything else
   def can?(_, _, _), do: false
 end
-```
-
-To query it:
-
-```elixir
-owner = %User{id: 1, role: :user}
-other = %User{id: 2, role: :user}
-admin = %User{id: 3, role: :admin}
-post = %Post{user_id: 1}
-
-Authy.authorized?(admin, :edit, post)  # => true
-Authy.authorized?(owner, :edit, post)  # => true
-Authy.authorized?(other, :edit, post)  # => false
-Authy.authorized?(nil, :edit, post)    # => false
-
-Authy.authorized?(admin, :show, post)  # => true
-Authy.authorized?(owner, :show, post)  # => true
-Authy.authorized?(other, :show, post)  # => true
-Authy.authorized?(nil, :show, post)    # => true
-
-# Note this use of the Post module, not the struct;
-# they both defer to Post.Policy
-Authy.authorized?(nil, :index, Post)   # => true
 ```
 
 ## Policy Scopes
@@ -103,22 +70,14 @@ defmodule Post.Policy
 end
 ```
 
-And to call it:
-
-```elixir
-Authy.scoped(user1, :index) # => posts for user id 1
-Authy.scoped(user2, :index) # => posts for user id 2
-Authy.scoped(admin, :index) # => all posts
-Authy.scoped(nil, :index)   # => published posts
-```
-
-You can also pass `opts` keywords to `Authy.scoped/3`, which will be passed along untouched to the `scope/3` method in your policy module, in case some extra parameters are required to build the scope.
-
 ## Phoenix and Other Plug Apps
 
-The `Authy.Controller` module has two macros designed to provide authorization in controller actions, `authorize/2` and `scope/2`. They have reasonable defaults which can be overridden for particular cases. 
+The `Authy.Controller` module contains helper functions designed to provide authorization in controller actions.
 
-The macros assume the variable `Plug.Conn` struct `conn` exists, and use it to determine the current user, controller action, and so on. 
+* `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
+* `authorize!/3` returns a modified `conn` on success, and will raise `Authy.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
+
+A flag is set on the `conn` to indicate that authorization has succeeded. This flag can be checked automatically at the end of the request using the `verify_authorized` plug, which will raise an exception if authorization was never performed. (TODO: add more details about this, maybe in another section, like setup?)
 
 ```elixir
 defmodule MyApp.PostController do
@@ -128,78 +87,72 @@ defmodule MyApp.PostController do
   # Authy.Controller has been imported in web.ex
 
   def index(conn, _params) do
-    authorize Post do        # <-- block is only executed if authorized
-      posts = scope(Post)    # <-- posts in :index are scoped to the current user
-      conn |> render("index.html", posts: posts)
-    end
+    posts = scope(conn, Post)    # <-- posts in :index are scoped to the current user
+    conn
+    |> authorize!(Post)          # <-- authorize :index action for Posts in general
+    |> render("index.html", posts: posts)
   end
 
   def show(conn, %{"id" => id}) do
-    post = scope(Post) |> Repo.get(id)   # <-- scope can even be used for lookup
-    authorize post do                    # <-- authorize the :show action for this particular post
-      conn |> render("show.html", post: post)
-    end
+    post = 
+      scope(conn, Post)                  # <-- scope can even be used for lookup
+      |> Repo.get(id)   
+
+    conn
+    |> authorize!(post)                  # <-- authorize the :show action for this particular post
+    |> render("show.html", post: post)
+  end
+
+  def update(conn, %{"id" => id, "post" => post_params}) do
+    post = 
+      scope(conn, Post)                  # <-- scope can even be used for lookup
+      |> Repo.get(id)
+
+    conn = authorize!(conn, post)        # <-- authorize the :update action for this post
+
+    # ...
   end
 end
 ```
 
-When authorization fails, Authy will call your unauthorized handler, as defined in the `:unauthorized_handler` config. The handler takes a single argument, `conn`, and should return a `Plug.Conn` with the appropriate adjustments.
-
-You can probably just copy and paste this to start:
-
-```elixir
-defmodule MyApp.AuthyCallbacks do
-  def handle_unauthorized(conn) do
-    conn
-    |> Plug.Conn.put_status(:unauthorized)
-    |> Phoenix.Controller.html(MyApp.ErrorView.render("401.html"))
-    |> Plug.Conn.halt
-  end
-
-  def handle_not_found(conn) do
-    conn
-    |> Plug.Conn.put_status(:not_found)
-    |> Phoenix.Controller.html(MyApp.ErrorView.render("404.html"))
-    |> Plug.Conn.halt
-  end
-end
-```
-
-In the event that a resource is nil, you may choose to trigger either "unauthorized" (default) or "not found" behavior. This can be customized at the library level by setting the `nils` config option to either `:unauthorized` or `:not_found`. It can also be customized at the action level by passing the same option to the `authorize` macro.
+In the event that a resource is nil, (TODO)
 
 ### Additional Options
 
-`policy` – Override the policy module
+* `:policy` – Override the policy module
 
-```elixir
-Authy.authorized?(user, :show, post, policy: Admin.Policy)
-Authy.scoped(user, Post, policy: Admin.Policy)
+  ```elixir
+  # Using Authy.Controller
+  authorize!(conn, post, policy: Admin.policy)
+  scope(conn, Post, policy: Admin.policy)
+  ```
 
-# Using Authy.Controller
-authorize post, policy: Admin.policy, do: #...
-scope(Post, policy: Admin.policy)
-```
+* `:action` – Override the action
 
-`action` – Override the action
+  ```elixir
+  authorize!(conn, post, action: :publish)
+  scope(conn, Post, action: :publish)
+  ```
 
-```elixir
-authorize post, action: :publish, do: #...
-scope(Post, action: :publish)
-```
+* `:user` – Override the current user
 
-`user` – Override the current user
+  ```elixir
+  authorize!(conn, post, user: other_user)
+  scope(conn, Post, user: other_user)
+  ```
 
-```elixir
-authorize post, user: other_user, do: #...
-scope(Post, user: other_user)
-```
+* `:error_status` – Override the HTTP return status when authorization fails
 
-`nils` – Override the behavior for nil resources
+  ```elixir
+  authorize!(conn, post, error_status: 404)
+  ```
 
-```elixir
-authorize post, nils: :unauthorized, do: #...
-authorize post, nils: :not_found
-```
+* `:nils` – Override the behavior for nil resources
+
+  ```elixir
+  authorize!(conn, post, nils: :unauthorized)
+  authorize!(conn, post, nils: :not_found)
+  ```
 
 ## Recommendations
 
@@ -219,7 +172,9 @@ For individual resource actions like `:show`, pass in the struct data itself, e.
 
 For scopes, it doesn't matter if you pass in the module or the data - either will work.
 
-### Suggestion: Policy Helpers
+### Common Patterns
+
+#### Policy Helpers
 
 Consider creating a generic **policy helper** to collect authorization logic that is common to many different parts of your application. Reuse it by importing it into more specific policies.
 
@@ -235,15 +190,19 @@ defmodule MyApp.Post.Policy do
 end
 ```
 
-### Suggestion: Controller Policies
+#### Controller Policies
 
-What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controllers' actions are locked down.
+What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controller's actions are locked down.
 
 Try creating a policy for the controller itself. `MyApp.FooController.Policy` is completely acceptable.
 
+#### Authorize Entire Controllers and Router Pipelines
+
+TODO
+
 ## Not What You're Looking For?
 
-Check out these other Elixir authorization libraries:
+Check out these other libraries:
 
 * [Canada](https://github.com/jarednorman/canada)
 * [Canary](https://github.com/cpjk/canary)
