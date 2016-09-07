@@ -229,6 +229,22 @@ end
   authorize!(conn, post, error_status: 404)
   ```
 
+## Authorization Outside of Controllers
+
+Policies are just plain old modules, so you can call them directly:
+
+```elixir
+Post.Policy.can?(user, :edit, post)  # <-- returns boolean
+Post.Policy.scope(user, :index)      # <-- returns query for posts
+```
+
+Or you can use the `Bodyguard` module to determine the policy module automatically.
+
+```elixir
+Bodyguard.authorized?(user, :edit, post)  # <-- defers to Post.Policy.can?/3
+Bodyguard.scoped(user, :index, Post)      # <-- defers to Post.Policy.scope/3
+```
+
 ## Common Patterns
 
 ### Policy Helpers
