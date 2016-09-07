@@ -205,9 +205,8 @@ end
 * `:policy` – Override the policy module
 
   ```elixir
-  # Using Bodyguard.Controller
-  authorize!(conn, post, policy: Admin.policy)
-  scope(conn, Post, policy: Admin.policy)
+  authorize!(conn, post, policy: FeaturedPost.Policy)
+  scope(conn, Post, policy: FeaturedPost.Policy)
   ```
 
 * `:action` – Override the action
