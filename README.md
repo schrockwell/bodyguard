@@ -106,12 +106,15 @@ end
 
 ## Authorizing Controller Actions
 
-The `Bodyguard.Controller` module contains helper functions designed to provide authorization in controller actions.
+The `Bodyguard.Controller` module contains helper functions designed to provide authorization in controller actions. You should probably import it in `web.ex` so it is available to all controllers.
+
+The user to authorize is retrieved from `conn.assigns[:current_user]`.
 
 * `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
 * `authorize!/3` returns a modified `conn` on success, and will raise `Bodyguard.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
-
-A flag is set on the `conn` to indicate that authorization has succeeded. This flag can be checked automatically at the end of the request using the `verify_authorized` plug, which will raise an exception if authorization was never performed. (TODO: add more details about this, maybe in another section, like setup?)
+* `scope/3` will call the appropriate `scope` function on your policy module for the current user
+* The `verify_authorized` plug will ensure that an authorization check was performed. It runs the check at the end of each action, immediately before returning the response, and will fail if authorization was not performed.
+* `mark_authorized/1` will explicitly force authorization to succeed
 
 ```elixir
 defmodule MyApp.PostController do
@@ -119,6 +122,8 @@ defmodule MyApp.PostController do
   alias MyApp.Post
 
   # Bodyguard.Controller has been imported in web.ex
+
+  plug :verify_authorized                     # <-- is run at the END of each action
 
   def index(conn, _params) do
     posts = scope(conn, Post) |> Repo.all     # <-- posts in :index are scoped to the current user
@@ -254,7 +259,7 @@ Consider creating a generic **policy helper** to collect authorization logic tha
 
 ```elixir
 defmodule MyApp.PolicyHelper do
-  # common methods here
+  # common functions here
 end
 
 defmodule MyApp.Post.Policy do
