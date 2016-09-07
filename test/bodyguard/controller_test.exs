@@ -17,7 +17,7 @@ defmodule Policy.HelpersTest do
 
   test "authorizing a nonpermitted action raises an exception", %{conn: conn} do
     try do
-      Authy.Controller.authorize!(conn, %MockStruct{permit: false})
+      Bodyguard.Controller.authorize!(conn, %MockStruct{permit: false})
       flunk "exception not raised"
     rescue exception ->
       assert Plug.Exception.status(exception) == 403
@@ -27,7 +27,7 @@ defmodule Policy.HelpersTest do
 
   test "authorizing a nonpermitted action with a custom error status raises an exception", %{conn: conn} do
     try do
-      Authy.Controller.authorize!(conn, %MockStruct{permit: false}, error_status: 404)
+      Bodyguard.Controller.authorize!(conn, %MockStruct{permit: false}, error_status: 404)
       flunk "exception not raised"
     rescue exception ->
       assert Plug.Exception.status(exception) == 404
@@ -37,7 +37,7 @@ defmodule Policy.HelpersTest do
 
   test "authorizing a permitted action does not raise an exception", %{conn: conn} do
     try do
-      Authy.Controller.authorize!(conn, %MockStruct{permit: true})
+      Bodyguard.Controller.authorize!(conn, %MockStruct{permit: true})
     rescue _e ->
       flunk "exception raised"
     end
@@ -46,7 +46,7 @@ defmodule Policy.HelpersTest do
   test "failing to authorize after verifying it is authorized is run raises an exception", %{conn: conn} do
     try do
       conn
-      |> Authy.Controller.verify_authorized
+      |> Bodyguard.Controller.verify_authorized
       |> Plug.Conn.send_resp(200, "Hello, World!")
 
       flunk "exception not raised"
@@ -59,8 +59,8 @@ defmodule Policy.HelpersTest do
   test "authorizing a permitted action after verifying it is authorized does not raise an exception", %{conn: conn} do
     try do
       conn
-      |> Authy.Controller.verify_authorized
-      |> Authy.Controller.authorize!(%MockStruct{permit: true})
+      |> Bodyguard.Controller.verify_authorized
+      |> Bodyguard.Controller.authorize!(%MockStruct{permit: true})
       |> Plug.Conn.send_resp(200, "Hello, World!")
     rescue _e ->
       flunk "exception raised"
@@ -70,8 +70,8 @@ defmodule Policy.HelpersTest do
   test "marking authorized after verifying it is authorized does not raise an exception", %{conn: conn} do
     try do
       conn
-      |> Authy.Controller.verify_authorized
-      |> Authy.Controller.mark_authorized
+      |> Bodyguard.Controller.verify_authorized
+      |> Bodyguard.Controller.mark_authorized
       |> Plug.Conn.send_resp(200, "Hello, World!")
     rescue _e ->
       flunk "exception raised"

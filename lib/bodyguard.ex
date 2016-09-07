@@ -1,18 +1,18 @@
-defmodule Authy do
+defmodule Bodyguard do
   @moduledoc """
-  Authy can be used to authorize user actions for resources. It has no
+  Bodyguard can be used to authorize user actions for resources. It has no
   external dependencies, so it will work in any Elixir app as a basic 
   authorization mechanism.
 
   See the readme for more information and examples.
 
   For common integration patterns in Plug-based web applications, check out
-  `Authy.Controller`.
+  `Bodyguard.Controller`.
   """
 
   @doc """
   Given a data structure, determines the policy module to call for authorization
-  checks, following the Authy convention.
+  checks, following the Bodyguard convention.
 
   Returns an atom of the policy module if passed a struct or atom, by appending
   ".Policy" to the module name
@@ -38,12 +38,12 @@ defmodule Authy do
 
       user = %MyApp.User{}
       post = %MyApp.Post{}
-      Authy.authorized?(user, :show, post)
-      Authy.authorized?(user, :index, MyApp.Post)
+      Bodyguard.authorized?(user, :show, post)
+      Bodyguard.authorized?(user, :index, MyApp.Post)
   
   You can explicitly specify the policy module using the `:policy` option:
 
-      Authy.authorized?(user, :show, post, policy: MyApp.DraftPost.Policy)
+      Bodyguard.authorized?(user, :show, post, policy: MyApp.DraftPost.Policy)
   """
   def authorized?(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
@@ -74,7 +74,7 @@ defmodule Authy do
       end
 
       # post_controller.ex
-      posts = Authy.scoped(current_user, MyApp.Post) |> Repo.all
+      posts = Bodyguard.scoped(current_user, MyApp.Post) |> Repo.all
   """
   def scoped(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)

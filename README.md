@@ -1,26 +1,48 @@
-# Authy – Simple Authorization
+# Authy is now Bodyguard
 
-Authy is a tiny authorization library that imposes a simple module naming convention to express authorization.
+Due to potential naming conflicts, the package previously known as **Authy** is now **Bodyguard** beginning with version 0.2.0.
+
+The `authy` package will be removed from Hex, and `bodyguard` will be the new package name from here on out.
+
+This renaming also comes with a number of API changes that differ from `authy`, namely replacing the `authorize` and `scope` block-style macros with standard functions. Details are below.
+
+# Bodyguard – Simple, Flexibile Authorization
+
+Bodyguard is an authorization library that imposes a simple module naming convention to express authorization.
 
 It supplies some handy functions to DRY up controller actions in Phoenix and other Plug-based apps.
 
-It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Authy is coming from.
+It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Bodyguard is coming from.
 
-* [Hex](https://hex.pm/packages/authy)
-* [GitHub](https://github.com/schrockwell/authy)
-* [Docs](https://hexdocs.pm/authy/)
+* [Hex](https://hex.pm/packages/bodyguard)
+* [GitHub](https://github.com/schrockwell/bodyguard)
+* [Docs](https://hexdocs.pm/bodyguard/)
 
 ## Installation
 
-  1. Add `authy` to your list of dependencies in `mix.exs`:
+  1. Add `bodyguard` to your list of dependencies in `mix.exs`:
 
     ```elixir
     def deps do
-      [{:authy, "~> 0.1.0"}]
+      [{:bodyguard, "~> 0.1.0"}]
     end
     ```
 
-  2. Add `import Authy.Controller` to the `controller` section of `web.ex` to make its functions available.
+  2. Add `import Bodyguard.Controller` to the `controller` section of `web.ex` to make its functions available.
+
+    ```elixir
+    # lib/my_app/web.ex
+
+    defmodule MyApp.Web do
+      # ...
+      def controller do
+        quote do
+          # ...
+          import Bodyguard.Controller  # <-- add
+        end
+      end
+    end
+    ```
 
 ## Policies
 
@@ -70,12 +92,12 @@ defmodule Post.Policy
 end
 ```
 
-## Phoenix and Other Plug Apps
+## Authorizing Controller Actions
 
-The `Authy.Controller` module contains helper functions designed to provide authorization in controller actions.
+The `Bodyguard.Controller` module contains helper functions designed to provide authorization in controller actions.
 
 * `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
-* `authorize!/3` returns a modified `conn` on success, and will raise `Authy.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
+* `authorize!/3` returns a modified `conn` on success, and will raise `Bodyguard.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
 
 A flag is set on the `conn` to indicate that authorization has succeeded. This flag can be checked automatically at the end of the request using the `verify_authorized` plug, which will raise an exception if authorization was never performed. (TODO: add more details about this, maybe in another section, like setup?)
 
@@ -84,7 +106,7 @@ defmodule MyApp.PostController do
   use MyApp.Web, :controller
   alias MyApp.Post
 
-  # Authy.Controller has been imported in web.ex
+  # Bodyguard.Controller has been imported in web.ex
 
   def index(conn, _params) do
     posts = scope(conn, Post) |> Repo.all     # <-- posts in :index are scoped to the current user
@@ -117,7 +139,7 @@ In the event that a resource is nil, (TODO)
 * `:policy` – Override the policy module
 
   ```elixir
-  # Using Authy.Controller
+  # Using Bodyguard.Controller
   authorize!(conn, post, policy: Admin.policy)
   scope(conn, Post, policy: Admin.policy)
   ```
@@ -151,13 +173,13 @@ In the event that a resource is nil, (TODO)
 
 ## Recommendations
 
-Here are a few helpful tips and conventions to follow when laying out Authy in your app.
+Here are a few helpful tips and conventions to follow when laying out Bodyguard in your app.
 
 ### File Naming and Location
 
-Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, for example `user_policy.ex` and `post_policy.ex`.
+Place policy files in `lib/my_app/policies`.
 
-For plain Elixir apps, place policies in `lib/policies`. For Phoenix web apps, put them in `web/policies` instead.
+Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, for example `user_policy.ex` and `post_policy.ex`.
 
 ### Member Versus Collection Actions
 
@@ -165,7 +187,7 @@ For collection actions like `:index`, pass in the module name (an atom) as the r
 
 For individual resource actions like `:show`, pass in the struct data itself, e.g. `%MyApp.User{}`.
 
-For scopes, it doesn't matter if you pass in the module or the data - either will work.
+For scopes, it doesn't matter if you pass in the module or a struct - either will work.
 
 ### Common Patterns
 
@@ -191,10 +213,6 @@ What if you have a Phoenix controller that doesn't correspond to one particular 
 
 Try creating a policy for the controller itself. `MyApp.FooController.Policy` is completely acceptable.
 
-#### Authorize Entire Controllers and Router Pipelines
-
-TODO
-
 ## Not What You're Looking For?
 
 Check out these other libraries:
@@ -214,3 +232,9 @@ Check out these other libraries:
 ## License
 
 MIT License, Copyright (c) 2016 Rockwell Schrock
+
+## Acknowledgements
+
+Thank you to the following contributors:
+
+* [Ben Cates](https://github.com/bencates)

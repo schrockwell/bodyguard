@@ -1,10 +1,10 @@
-defmodule AuthyTest do
-  import Authy
-  alias AuthyTest.Post
-  alias AuthyTest.User
+defmodule BodyguardTest do
+  import Bodyguard
+  alias BodyguardTest.Post
+  alias BodyguardTest.User
 
   use ExUnit.Case, async: true
-  doctest Authy
+  doctest Bodyguard
 
   defmodule User do
     defstruct [id: nil, role: :guest]
@@ -34,7 +34,7 @@ defmodule AuthyTest do
   end
 
   defmodule PostController do
-    import Authy.Controller
+    import Bodyguard.Controller
 
     def index(conn, _params) do
       with {:ok, conn} <- authorize(conn, Post) do
@@ -166,7 +166,7 @@ defmodule AuthyTest do
     conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
-    Application.put_env(:authy, :nils, :not_found)
+    Application.put_env(:bodyguard, :nils, :not_found)
 
     conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, %{post: nil}) == {:error, :not_found}

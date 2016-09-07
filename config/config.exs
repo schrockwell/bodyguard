@@ -10,11 +10,11 @@ use Mix.Config
 
 # You can configure for your application as:
 #
-#     config :authy, key: :value
+#     config :bodyguard, key: :value
 #
 # And access this configuration in your application as:
 #
-#     Application.get_env(:authy, :key)
+#     Application.get_env(:bodyguard, :key)
 #
 # Or configure a 3rd-party app:
 #
