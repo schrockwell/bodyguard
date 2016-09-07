@@ -38,7 +38,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
       def controller do
         quote do
           # ...
-          import Bodyguard.Controller  # <-- add
+          import Bodyguard.Controller  # <-- new
         end
       end
     end
@@ -50,7 +50,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
     defmodule MyApp.ErrorView do
       use MyApp.Web, :view
       # ...
-      def render("403.html", _assigns) do
+      def render("403.html", _assigns) do  # <-- new
         "Forbidden"
       end
     end
