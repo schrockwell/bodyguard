@@ -54,18 +54,6 @@ defmodule BodyguardTest do
       end
     end
 
-    def show_nils_not_found(conn, %{post: post}) do
-      with {:ok, conn} <- authorize(conn, post, nils: :not_found) do
-        scope(conn, post)
-      end
-    end
-
-    def show_nils_unauthorized(conn, %{post: post}) do
-      with {:ok, conn} <- authorize(conn, post, nils: :unauthorized) do
-        scope(conn, post)
-      end
-    end
-
     def delete(conn, %{post: post}) do
       with {:ok, conn} <- authorize(conn, post) do
         scope(conn, post)
@@ -154,37 +142,11 @@ defmodule BodyguardTest do
     conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_not_found(conn, %{post: nil}) == {:error, :not_found}
-
     conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
 
     conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
     assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
-
-    Application.put_env(:bodyguard, :nils, :not_found)
-
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_unauthorized(conn, %{post: nil}) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show_nils_not_found(conn, %{post: nil}) == {:error, :not_found}
-
-    conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :not_found}
 
     # Test delete action
     conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :delete}}

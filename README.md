@@ -176,7 +176,27 @@ defmodule MyApp.PostController do
 end
 ```
 
-In the event that a resource is nil, (TODO)
+### Handling "Not Found"
+
+Note that if `Repo.get!` fails due to an invalid ID, the action will raise an exception and render a 404 Not Found page, which is the desired behavior in most cases.
+
+`nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
+
+For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource existing or not. In that case, you can pre-authorize before even attempting to fetch the record, and later authorize that particular resource once it has been retrieved.
+
+To lock down an entire controller using this method, create a `plug` function to handle it, like so:
+
+```elixir
+defmodule MyApp.ManageUserController do
+  plug :preauthorize
+
+  # ...
+
+  defp preauthorize(conn, _opts) do
+    authorize!(conn, User)  # <-- lock down all actions for Users in general
+  end
+end
+```
 
 ### Additional Options
 
@@ -206,13 +226,6 @@ In the event that a resource is nil, (TODO)
 
   ```elixir
   authorize!(conn, post, error_status: 404)
-  ```
-
-* `:nils` – Override the behavior for nil resources
-
-  ```elixir
-  authorize!(conn, post, nils: :unauthorized)
-  authorize!(conn, post, nils: :not_found)
   ```
 
 ## Recommendations

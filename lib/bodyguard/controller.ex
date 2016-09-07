@@ -102,7 +102,6 @@ defmodule Bodyguard.Controller.Helpers do
 
   Available options:
 
-  * nils: :unauthorized (default) or :not_found - action to take when resource is nil
   * action: atom - override the controller action picked up from conn
   * user: term - override the current user picked up from conn
   * policy: atom - override the policy determined from the term
@@ -110,12 +109,11 @@ defmodule Bodyguard.Controller.Helpers do
   def conn_authorization(conn, term, opts) do
     # Figure out which function to call in the event of a nil term -
     # :unauthorized (default) or :not_found
-    nil_function = opts[:nils] || Application.get_env(:bodyguard, :nils, :unauthorized)
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
 
     cond do
-      is_nil(term) -> nil_function
+      is_nil(term) -> :unauthorized
       Bodyguard.authorized?(user, action, term, opts) -> :authorized
       true -> :unauthorized
     end
