@@ -136,10 +136,42 @@ defmodule MyApp.PostController do
     |> render("show.html", post: post)
   end
 
+  def new(conn, _params) do
+    conn = authorize!(conn, Post)             # <-- authorize the :new action for posts
+    changeset = Post.changeset(%Post{})
+
+    conn
+    |> render("new.html", changeset: changeset)
+  end
+
+  def create(conn, %{"post" => post_params}) do
+    conn = authorize!(conn, Post)             # <-- authorize the :create action for posts
+    changeset = Post.changeset(%Post{}, post_params)
+
+    # do insert...
+  end
+
+  def edit(conn, %{"id" => id}) do
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    changeset = Post.changeset(post)
+
+    conn
+    |> authorize!(post)                       # <-- authorize the :edit action for this post
+    |> render("edit.html", post: post, changeset: changeset)
+  end
+
   def update(conn, %{"id" => id, "post" => post_params}) do
     post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
     conn = authorize!(conn, post)             # <-- authorize the :update action for this post
-    # ...
+
+    # do update...
+  end
+
+  def delete(conn, %{"id" => id}) do
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    conn = authorize!(conn, post)             # <-- authorize the :delete action for this post
+
+    # do delete...
   end
 end
 ```
