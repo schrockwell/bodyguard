@@ -60,7 +60,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 
 Authorization logic is contained in **policy modules** – one module per resource to be authorized.
 
-To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` methods:
+To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` functions:
 
 ```elixir
 defmodule Post.Policy do
@@ -187,19 +187,16 @@ Note that if `Repo.get!` fails due to an invalid ID, the action will raise an ex
 
 `nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
 
-For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource existing or not. In that case, you can pre-authorize before even attempting to fetch the record, and later authorize that particular resource once it has been retrieved.
+### Controller-Wide Authorization
 
-To lock down an entire controller using this method, create a `plug` function to handle it, like so:
+For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved.
+
+To lock down an entire controller using this technique, use `authorize!` as a `plug`. Keep in mind you will have to implement `can?/3` functions on the policy to match the module name, even for member actions like `:show` and `:edit`:
 
 ```elixir
 defmodule MyApp.ManageUserController do
-  plug :preauthorize
-
+  plug :authorize!, User  # <-- pre-authorize all actions
   # ...
-
-  defp preauthorize(conn, _opts) do
-    authorize!(conn, User)  # <-- lock down all actions for Users in general
-  end
 end
 ```
 
@@ -233,27 +230,9 @@ end
   authorize!(conn, post, error_status: 404)
   ```
 
-## Recommendations
+## Common Patterns
 
-Here are a few helpful tips and conventions to follow when laying out Bodyguard in your app.
-
-### File Naming and Location
-
-Place policy files in `lib/my_app/policies`.
-
-Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, for example `user_policy.ex` and `post_policy.ex`.
-
-### Member Versus Collection Actions
-
-For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against, e.g. `MyApp.User`.
-
-For individual resource actions like `:show`, pass in the struct data itself, e.g. `%MyApp.User{}`.
-
-For scopes, it doesn't matter if you pass in the module or a struct - either will work.
-
-### Common Patterns
-
-#### Policy Helpers
+### Policy Helpers
 
 Consider creating a generic **policy helper** to collect authorization logic that is common to many different parts of your application. Reuse it by importing it into more specific policies.
 
@@ -269,7 +248,7 @@ defmodule MyApp.Post.Policy do
 end
 ```
 
-#### Controller Policies
+### Controller Policies
 
 What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controller's actions are locked down.
 
