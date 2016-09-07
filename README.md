@@ -44,6 +44,18 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
     end
     ```
 
+  3. Add an error view case for handling 403 Forbidden, for when authorization fails.
+
+    ```elixir
+    defmodule MyApp.ErrorView do
+      use MyApp.Web, :view
+      # ...
+      def render("403.html", _assigns) do
+        "Forbidden"
+      end
+    end
+    ```
+
 ## Policies
 
 Authorization logic is contained in **policy modules** – one module per resource to be authorized.
