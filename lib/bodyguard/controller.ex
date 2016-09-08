@@ -17,25 +17,43 @@ defmodule Bodyguard.Controller do
         {:ok, conn} = authorize(conn, post)
         # ...
       end
+
+  Available options:
+  * action: atom - override the controller action picked up from conn
+  * user: term - override the current user picked up from conn
+  * policy: atom - override the policy determined from the term
   """
   def authorize(conn, term, opts \\ []) do
-    case Bodyguard.Controller.Helpers.conn_authorization(conn, term, opts) do
-      :authorized -> {:ok, mark_authorized(conn)}
-      :unauthorized -> {:error, :unauthorized}
-      :not_found -> {:error, :not_found}
+    action = opts[:action] || get_action(conn)
+    user = opts[:user] || get_current_user(conn)
+
+    cond do
+      is_nil(term) -> {:error, :unauthorized}
+      Bodyguard.authorized?(user, action, term, opts) -> {:ok, mark_authorized(conn)}
+      true -> {:error, :unauthorized}
     end
   end
 
   @doc """
   Similar to `authorize/3` but raises `Bodyguard.NotAuthorizedError` if no record was found.
+
+  Available options:
+  * action: atom - override the controller action picked up from conn
+  * user: term - override the current user picked up from conn
+  * policy: atom - override the policy determined from the term
+  * error_message: String.t - override the default error message
+  * error_status: integer - override the default HTTP error code
   """
   def authorize!(conn, term, opts \\ []) do
+    error_message = opts[:error_message] || "not authorized"
+    error_status = opts[:error_status] || 403
+
     case authorize(conn, term, opts) do
       {:ok, conn} -> conn
-      {:error, _reason} -> 
+      {:error, _reason} ->
         raise Bodyguard.NotAuthorizedError,
-          message: "not authorized", 
-          status: Bodyguard.Controller.Helpers.error_status(opts)
+          message: error_message,
+          status: error_status
     end
   end
 
@@ -53,22 +71,37 @@ defmodule Bodyguard.Controller do
         {:ok, conn} = authorize(conn, post)
         # ...
       end
+
+  Available options:
+  * action: atom - override the controller action picked up from conn
+  * user: term - override the current user picked up from conn
+  * policy: atom - override the policy determined from the term
   """
   def scope(conn, term, opts \\ []) do
-    Bodyguard.Controller.Helpers.conn_scope(conn, term, opts)
+    action = opts[:action] || get_action(conn)
+    user = opts[:user] || get_current_user(conn)
+
+    Bodyguard.scoped(user, action, term, opts)
   end
 
   @doc """
   Raises `Bodyguard.NotAuthorizedError` if the `conn` tries to send without any authorization being run.
 
   This is mainly used as a function plug on your controller.
+
+  Available options:
+  * error_message: String.t - override the default error message
+  * error_status: integer - override the default HTTP error code
   """
   def verify_authorized(conn, opts \\ []) do
+    error_message = opts[:error_message] || "no authorization run"
+    error_status = opts[:error_status] || 403
+
     Plug.Conn.register_before_send conn, fn (after_conn) ->
       unless after_conn.private[:bodyguard_authorized] do
-        raise Bodyguard.NotAuthorizedError, 
-          message: "no authorization run",
-          status: Bodyguard.Controller.Helpers.error_status(opts)
+        raise Bodyguard.NotAuthorizedError,
+          message: error_message,
+          status: error_status
       end
 
       after_conn
@@ -83,67 +116,8 @@ defmodule Bodyguard.Controller do
   def mark_authorized(conn) do
     Plug.Conn.put_private(conn, :bodyguard_authorized, true)
   end
-end
 
-defmodule Bodyguard.Controller.Helpers do
-  @moduledoc """
-  These are behind-the-scenes methods for handling controller authorization. These
-  are only exported because the macros need to call them from other modules,
-  and we don't want to clutter up controller modules with helper functions
-  when Bodyguard.Controller is imported.
 
-  You probably don't need to call these functions directly.
-  """
-
-  @doc """
-  Returns an atom specifying the authorization status for the current
-  controller action. Typically this is not called directly by the developer,
-  only indirectly through the Bodyguard.Controller.authorize/2 macro.
-
-  Available options:
-
-  * action: atom - override the controller action picked up from conn
-  * user: term - override the current user picked up from conn
-  * policy: atom - override the policy determined from the term
-  """
-  def conn_authorization(conn, term, opts) do
-    # Figure out which function to call in the event of a nil term -
-    # :unauthorized (default) or :not_found
-    action = opts[:action] || get_action(conn)
-    user = opts[:user] || get_current_user(conn)
-
-    cond do
-      is_nil(term) -> :unauthorized
-      Bodyguard.authorized?(user, action, term, opts) -> :authorized
-      true -> :unauthorized
-    end
-  end
-
-  @doc """
-  Returns a resource scope for a given controller action. Typically this is not
-  called directly by the developer, only indirectly through the
-  Bodyguard.Controller.scope/2 macro.
-
-  Available options:
-
-  * action: atom - override the controller action picked up from conn
-  * user: term - override the current user picked up from conn
-  * policy: atom - override the policy determined from the term
-  """
-  def conn_scope(conn, term, opts \\ []) do
-    action = opts[:action] || get_action(conn)
-    user = opts[:user] || get_current_user(conn)
-    Bodyguard.scoped(user, action, term, opts)
-  end
-
-  @doc """
-  Returns the Plug error status to be raised by `Bodyguard.NotAuthorizedError`.
-  Returns 403 by default, but will be overridden by `opts[:error_status]`
-  if provided.
-  """
-  def error_status(opts \\ []) do
-    opts[:error_status] || 403
-  end
 
   defp get_current_user(conn) do
     key = Application.get_env(:bodyguard, :current_user, :current_user)
