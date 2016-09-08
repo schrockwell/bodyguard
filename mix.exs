@@ -23,7 +23,7 @@ defmodule Bodyguard.Mixfile do
 
   defp description do
     """
-    Bodyguard is a simple authorization library for Elixir and Phoenix apps.
+    Bodyguard is a simple, flexibile authorization library for Phoenix apps.
     It imposes some naming conventions so that policy modules can be easily
     located and queried at runtime depending on the context of the authorization.
     It was inspired by the behavior and conventions of Ruby's Pundit gem.
