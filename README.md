@@ -1,42 +1,66 @@
-# Authy – Simple Authorization
+# Authy is now Bodyguard
 
-Authy is a tiny Elixir authorization library that imposes a simple module naming convention to express authorization.
+Due to potential naming conflicts, the package previously known as **Authy** is now **Bodyguard** beginning with version 0.2.0.
 
-It also supplies some handy macros to DRY up controller actions in Phoenix and other Plug-based apps.
+The `authy` package will be removed from Hex, and `bodyguard` will be the new package name from here on out.
 
-It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Authy is coming from.
+This renaming also comes with a number of API changes that differ from `authy`, namely replacing the `authorize` and `scope` block-style macros with standard functions. Details are below.
 
-* [Hex](https://hex.pm/packages/authy)
-* [GitHub](https://github.com/schrockwell/authy)
-* [Docs](https://hexdocs.pm/authy/)
+# Bodyguard – Simple, Flexibile Authorization
+
+Bodyguard is an authorization library that imposes a simple module naming convention to express authorization.
+
+It supplies some handy functions to DRY up controller actions in Phoenix and other Plug-based apps.
+
+It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if you're a fan of Pundit, you'll see where Bodyguard is coming from.
+
+* [Hex](https://hex.pm/packages/bodyguard)
+* [GitHub](https://github.com/schrockwell/bodyguard)
+* [Docs](https://hexdocs.pm/bodyguard/)
 
 ## Installation
 
-  1. Add `authy` to your list of dependencies in `mix.exs`:
+  1. Add `bodyguard` to your list of dependencies in `mix.exs`:
 
     ```elixir
     def deps do
-      [{:authy, "~> 0.1.0"}]
+      [{:bodyguard, "~> 0.2.0"}]
     end
     ```
 
-  2. If you are using Phoenix or another Plug-based app, add this configuration to `config.exs`:
+  2. Add `import Bodyguard.Controller` to the `controller` section of `web.ex` to make its functions available.
 
     ```elixir
-    config :authy,
-      unauthorized_handler: {MyApp.AuthyCallbacks, :handle_unauthorized},
-      not_found_handler: {MyApp.AuthyCallbacks, :handle_not_found}
+    # lib/my_app/web.ex
+
+    defmodule MyApp.Web do
+      # ...
+      def controller do
+        quote do
+          # ...
+          import Bodyguard.Controller  # <-- new
+        end
+      end
+    end
     ```
 
-    You'll have to define that handler module. See the Phoenix section below for more info.
+  3. Add an error view case for handling 403 Forbidden, for when authorization fails.
 
-    Also add `import Authy.Controller` to the `controller` section of `web.ex` to make macros available.
+    ```elixir
+    defmodule MyApp.ErrorView do
+      use MyApp.Web, :view
+      # ...
+      def render("403.html", _assigns) do  # <-- new
+        "Forbidden"
+      end
+    end
+    ```
 
 ## Policies
 
 Authorization logic is contained in **policy modules** – one module per resource to be authorized.
 
-To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` methods:
+To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` functions:
 
 ```elixir
 defmodule Post.Policy do
@@ -54,29 +78,6 @@ defmodule Post.Policy do
   # Catch-all: deny everything else
   def can?(_, _, _), do: false
 end
-```
-
-To query it:
-
-```elixir
-owner = %User{id: 1, role: :user}
-other = %User{id: 2, role: :user}
-admin = %User{id: 3, role: :admin}
-post = %Post{user_id: 1}
-
-Authy.authorized?(admin, :edit, post)  # => true
-Authy.authorized?(owner, :edit, post)  # => true
-Authy.authorized?(other, :edit, post)  # => false
-Authy.authorized?(nil, :edit, post)    # => false
-
-Authy.authorized?(admin, :show, post)  # => true
-Authy.authorized?(owner, :show, post)  # => true
-Authy.authorized?(other, :show, post)  # => true
-Authy.authorized?(nil, :show, post)    # => true
-
-# Note this use of the Post module, not the struct;
-# they both defer to Post.Policy
-Authy.authorized?(nil, :index, Post)   # => true
 ```
 
 ## Policy Scopes
@@ -103,129 +104,156 @@ defmodule Post.Policy
 end
 ```
 
-And to call it:
+## Authorizing Controller Actions
 
-```elixir
-Authy.scoped(user1, :index) # => posts for user id 1
-Authy.scoped(user2, :index) # => posts for user id 2
-Authy.scoped(admin, :index) # => all posts
-Authy.scoped(nil, :index)   # => published posts
-```
+The `Bodyguard.Controller` module contains helper functions designed to provide authorization in controller actions. You should probably import it in `web.ex` so it is available to all controllers.
 
-You can also pass `opts` keywords to `Authy.scoped/3`, which will be passed along untouched to the `scope/3` method in your policy module, in case some extra parameters are required to build the scope.
+The user to authorize is retrieved from `conn.assigns[:current_user]`.
 
-## Phoenix and Other Plug Apps
-
-The `Authy.Controller` module has two macros designed to provide authorization in controller actions, `authorize/2` and `scope/2`. They have reasonable defaults which can be overridden for particular cases. 
-
-The macros assume the variable `Plug.Conn` struct `conn` exists, and use it to determine the current user, controller action, and so on. 
+* `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
+* `authorize!/3` returns a modified `conn` on success, and will raise `Bodyguard.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
+* `scope/3` will call the appropriate `scope` function on your policy module for the current user
+* The `verify_authorized` plug will ensure that an authorization check was performed. It runs the check at the end of each action, immediately before returning the response, and will fail if authorization was not performed.
+* `mark_authorized/1` will explicitly force authorization to succeed
 
 ```elixir
 defmodule MyApp.PostController do
   use MyApp.Web, :controller
   alias MyApp.Post
 
-  # Authy.Controller has been imported in web.ex
+  # Bodyguard.Controller has been imported in web.ex
+
+  plug :verify_authorized                     # <-- is run at the END of each action
 
   def index(conn, _params) do
-    authorize Post do        # <-- block is only executed if authorized
-      posts = scope(Post)    # <-- posts in :index are scoped to the current user
-      conn |> render("index.html", posts: posts)
-    end
+    posts = scope(conn, Post) |> Repo.all     # <-- posts in :index are scoped to the current user
+
+    conn
+    |> authorize!(Post)                       # <-- authorize :index action for Posts in general
+    |> render("index.html", posts: posts)
   end
 
   def show(conn, %{"id" => id}) do
-    post = scope(Post) |> Repo.get(id)   # <-- scope can even be used for lookup
-    authorize post do                    # <-- authorize the :show action for this particular post
-      conn |> render("show.html", post: post)
-    end
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+
+    conn
+    |> authorize!(post)                       # <-- authorize the :show action for this post
+    |> render("show.html", post: post)
+  end
+
+  def new(conn, _params) do
+    conn = authorize!(conn, Post)             # <-- authorize the :new action for posts
+    changeset = Post.changeset(%Post{})
+
+    conn
+    |> render("new.html", changeset: changeset)
+  end
+
+  def create(conn, %{"post" => post_params}) do
+    conn = authorize!(conn, Post)             # <-- authorize the :create action for posts
+    changeset = Post.changeset(%Post{}, post_params)
+
+    # do insert...
+  end
+
+  def edit(conn, %{"id" => id}) do
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    changeset = Post.changeset(post)
+
+    conn
+    |> authorize!(post)                       # <-- authorize the :edit action for this post
+    |> render("edit.html", post: post, changeset: changeset)
+  end
+
+  def update(conn, %{"id" => id, "post" => post_params}) do
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    conn = authorize!(conn, post)             # <-- authorize the :update action for this post
+
+    # do update...
+  end
+
+  def delete(conn, %{"id" => id}) do
+    post = scope(conn, Post) |> Repo.get!(id) # <-- scope used for lookup
+    conn = authorize!(conn, post)             # <-- authorize the :delete action for this post
+
+    # do delete...
   end
 end
 ```
 
-When authorization fails, Authy will call your unauthorized handler, as defined in the `:unauthorized_handler` config. The handler takes a single argument, `conn`, and should return a `Plug.Conn` with the appropriate adjustments.
+### Handling "Not Found"
 
-You can probably just copy and paste this to start:
+Note that if `Repo.get!` fails due to an invalid ID, the action will raise an exception and render a 404 Not Found page, which is the desired behavior in most cases.
+
+`nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
+
+### Controller-Wide Authorization
+
+For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved.
+
+To lock down an entire controller using this technique, use `authorize!` as a `plug`. Keep in mind you will have to implement `can?/3` functions on the policy to match the module name, even for member actions like `:show` and `:edit`:
 
 ```elixir
-defmodule MyApp.AuthyCallbacks do
-  def handle_unauthorized(conn) do
-    conn
-    |> Plug.Conn.put_status(:unauthorized)
-    |> Phoenix.Controller.html(MyApp.ErrorView.render("401.html"))
-    |> Plug.Conn.halt
-  end
-
-  def handle_not_found(conn) do
-    conn
-    |> Plug.Conn.put_status(:not_found)
-    |> Phoenix.Controller.html(MyApp.ErrorView.render("404.html"))
-    |> Plug.Conn.halt
-  end
+defmodule MyApp.ManageUserController do
+  plug :authorize!, User  # <-- pre-authorize all actions
+  # ...
 end
 ```
-
-In the event that a resource is nil, you may choose to trigger either "unauthorized" (default) or "not found" behavior. This can be customized at the library level by setting the `nils` config option to either `:unauthorized` or `:not_found`. It can also be customized at the action level by passing the same option to the `authorize` macro.
 
 ### Additional Options
 
-`policy` – Override the policy module
+* `:policy` – Override the policy module
+
+  ```elixir
+  authorize!(conn, post, policy: FeaturedPost.Policy)
+  scope(conn, Post, policy: FeaturedPost.Policy)
+  ```
+
+* `:action` – Override the action
+
+  ```elixir
+  authorize!(conn, post, action: :publish)
+  scope(conn, Post, action: :publish)
+  ```
+
+* `:user` – Override the current user
+
+  ```elixir
+  authorize!(conn, post, user: other_user)
+  scope(conn, Post, user: other_user)
+  ```
+
+* `:error_status` – Override the HTTP return status when authorization fails
+
+  ```elixir
+  authorize!(conn, post, error_status: 404)
+  ```
+
+## Authorization Outside of Controllers
+
+Policies are just plain old modules, so you can call them directly:
 
 ```elixir
-Authy.authorized?(user, :show, post, policy: Admin.Policy)
-Authy.scoped(user, Post, policy: Admin.Policy)
-
-# Using Authy.Controller
-authorize post, policy: Admin.policy, do: #...
-scope(Post, policy: Admin.policy)
+Post.Policy.can?(user, :edit, post)  # <-- returns boolean
+Post.Policy.scope(user, :index)      # <-- returns query for posts
 ```
 
-`action` – Override the action
+Or you can use the `Bodyguard` module to determine the policy module automatically.
 
 ```elixir
-authorize post, action: :publish, do: #...
-scope(Post, action: :publish)
+Bodyguard.authorized?(user, :edit, post)  # <-- defers to Post.Policy.can?/3
+Bodyguard.scoped(user, :index, Post)      # <-- defers to Post.Policy.scope/3
 ```
 
-`user` – Override the current user
+## Common Patterns
 
-```elixir
-authorize post, user: other_user, do: #...
-scope(Post, user: other_user)
-```
-
-`nils` – Override the behavior for nil resources
-
-```elixir
-authorize post, nils: :unauthorized, do: #...
-authorize post, nils: :not_found
-```
-
-## Recommendations
-
-Here are a few helpful tips and conventions to follow when laying out Authy in your app.
-
-### File Naming and Location
-
-Limit one policy module per file, and name the files like `[MODEL]_policy.ex`, for example `user_policy.ex` and `post_policy.ex`.
-
-For plain Elixir apps, place policies in `lib/policies`. For Phoenix web apps, put them in `web/policies` instead.
-
-### Member Versus Collection Actions
-
-For collection actions like `:index`, pass in the module name (an atom) as the resource to be authorized, since there is no instance of data to check against, e.g. `MyApp.User`.
-
-For individual resource actions like `:show`, pass in the struct data itself, e.g. `%MyApp.User{}`.
-
-For scopes, it doesn't matter if you pass in the module or the data - either will work.
-
-### Suggestion: Policy Helpers
+### Policy Helpers
 
 Consider creating a generic **policy helper** to collect authorization logic that is common to many different parts of your application. Reuse it by importing it into more specific policies.
 
 ```elixir
 defmodule MyApp.PolicyHelper do
-  # common methods here
+  # common functions here
 end
 
 defmodule MyApp.Post.Policy do
@@ -235,15 +263,15 @@ defmodule MyApp.Post.Policy do
 end
 ```
 
-### Suggestion: Controller Policies
+### Controller Policies
 
-What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controllers' actions are locked down.
+What if you have a Phoenix controller that doesn't correspond to one particular resource? Or, maybe you just want to customize how that controller's actions are locked down.
 
 Try creating a policy for the controller itself. `MyApp.FooController.Policy` is completely acceptable.
 
 ## Not What You're Looking For?
 
-Check out these other Elixir authorization libraries:
+Check out these other libraries:
 
 * [Canada](https://github.com/jarednorman/canada)
 * [Canary](https://github.com/cpjk/canary)
@@ -260,3 +288,9 @@ Check out these other Elixir authorization libraries:
 ## License
 
 MIT License, Copyright (c) 2016 Rockwell Schrock
+
+## Acknowledgements
+
+Thank you to the following contributors:
+
+* [Ben Cates](https://github.com/bencates)
