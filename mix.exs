@@ -4,7 +4,7 @@ defmodule Authy.Mixfile do
   def project do
     [
       app: :authy,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.3",
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
@@ -22,10 +22,7 @@ defmodule Authy.Mixfile do
 
   defp description do
     """
-    Authy is a simple authorization library for Elixir and Phoenix apps. 
-    It imposes some naming conventions so that policy modules can be easily
-    located and queried at runtime depending on the context of the authorization.
-    It was inspired by the behavior and conventions of Ruby's Pundit gem.
+    [DEPRECATED] Please use bodyguard instead.
     """
   end
 
@@ -35,7 +32,8 @@ defmodule Authy.Mixfile do
       maintainers: ["Rockwell Schrock"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/schrockwell/authy"
+        "Bodyguard" => "https://hex.pm/packages/bodyguard",
+        "GitHub" => "https://github.com/schrockwell/bodyguard"
       }
     ]
   end
