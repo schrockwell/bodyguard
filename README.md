@@ -28,7 +28,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
     end
     ```
 
-  2. Add `import Bodyguard.Controller` to the `controller` section of `web.ex` to make its functions available.
+  2. Add `import Bodyguard.Controller` to the `controller/0` method of `web.ex` to make its functions available.
 
     ```elixir
     # lib/my_app/web.ex
