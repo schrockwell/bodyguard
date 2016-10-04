@@ -120,8 +120,13 @@ defmodule Bodyguard.Controller do
 
 
   defp get_current_user(conn) do
-    key = Application.get_env(:bodyguard, :current_user, :current_user)
-    conn.assigns[key]
+    auth_key = Application.get_env(:bodyguard, :current_user, :current_user)
+
+    if is_atom(auth_key) do
+      conn.assigns[auth_key]
+    else
+      auth_key.(conn)
+    end
   end
 
   defp get_action(conn) do
