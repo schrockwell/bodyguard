@@ -187,6 +187,21 @@ Note that if `Repo.get!` fails due to an invalid ID, the action will raise an ex
 
 `nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
 
+### Handling `authorize!/3`
+
+`authorize!/3` raises directly to the router, thus you can use `Plug.ErrorHandler` to catch errors caused by Bodyguard.
+
+```elixir
+defmodule MyApp.Router do
+  use MyApp.Web, :router
+  use Plug.ErrorHandler # <-- new
+  
+  defp handle_errors(conn, %{ reason: %Bodyguard.NotAuthorizedError{} }) do
+    # redirect or do whatever you want
+  end
+end
+```
+
 ### Controller-Wide Authorization
 
 For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved.
