@@ -9,6 +9,14 @@ defmodule Policy.HelpersTest do
     def can?(_user, :test, model), do: model.permit
   end
 
+  defmodule MockStruct.PermitNilPolicy do
+    def can?(_user, _action, nil), do: true
+  end
+
+  defmodule MockStruct.DenyNilPolicy do
+    def can?(_user, _action, nil), do: false
+  end
+
   setup do
     conn = Plug.Test.conn(:get, "/") |> Plug.Conn.assign(:action, :test)
 
@@ -75,6 +83,34 @@ defmodule Policy.HelpersTest do
       |> Plug.Conn.send_resp(200, "Hello, World!")
     rescue _e ->
       flunk "exception raised"
+    end
+  end
+
+  test "authorizing a nil model raises an exception", %{conn: conn} do
+    try do
+      Bodyguard.Controller.authorize!(conn, nil)
+      flunk "exception not raised"
+    rescue exception ->
+      assert Plug.Exception.status(exception) == 403
+      assert exception.message == "not authorized"
+    end
+  end
+
+  test "authorizing a nil model with an explicit permit policy", %{conn: conn} do
+    try do
+      Bodyguard.Controller.authorize!(conn, nil, policy: MockStruct.PermitNilPolicy)
+    rescue _e ->
+      flunk "exception raised"
+    end
+  end
+
+  test "authorizing a nil model with an explicit deny policy", %{conn: conn} do
+    try do
+      Bodyguard.Controller.authorize!(conn, nil, policy: MockStruct.DenyNilPolicy)
+      flunk "exception not raised"
+    rescue exception ->
+      assert Plug.Exception.status(exception) == 403
+      assert exception.message == "not authorized"
     end
   end
 end

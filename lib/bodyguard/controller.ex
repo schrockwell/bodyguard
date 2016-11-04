@@ -26,9 +26,10 @@ defmodule Bodyguard.Controller do
   def authorize(conn, term, opts \\ []) do
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
+    explicit_policy = opts[:policy]
 
     cond do
-      is_nil(term) -> {:error, :unauthorized}
+      is_nil(term) && is_nil(explicit_policy) -> {:error, :unauthorized}
       Bodyguard.authorized?(user, action, term, opts) -> {:ok, mark_authorized(conn)}
       true -> {:error, :unauthorized}
     end
