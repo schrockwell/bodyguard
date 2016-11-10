@@ -189,14 +189,16 @@ Note that if `Repo.get!` fails due to an invalid ID, the action will raise an ex
 
 ### Handling `authorize!/3`
 
-`authorize!/3` raises directly to the router, thus you can use `Plug.ErrorHandler` to catch errors caused by Bodyguard.
+For Phoenix apps, presenting error views in `MyApp.ErrorView` is often enough.
+
+For further customization, or for plain Plug apps, `authorize!/3` raises directly to the router, so you can use `Plug.ErrorHandler` to catch errors caused by Bodyguard.
 
 ```elixir
 defmodule MyApp.Router do
   use MyApp.Web, :router
   use Plug.ErrorHandler # <-- new
   
-  defp handle_errors(conn, %{ reason: %Bodyguard.NotAuthorizedError{} }) do
+  defp handle_errors(conn, %{reason: %Bodyguard.NotAuthorizedError{}}) do
     # redirect or do whatever you want
   end
 end
