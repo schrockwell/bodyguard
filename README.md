@@ -2,8 +2,6 @@
 
 Due to potential naming conflicts, the package previously known as **Authy** is now **Bodyguard** beginning with version 0.2.0.
 
-The `authy` package will be removed from Hex, and `bodyguard` will be the new package name from here on out.
-
 This renaming also comes with a number of API changes that differ from `authy`, namely replacing the `authorize` and `scope` block-style macros with standard functions. Details are below.
 
 # Bodyguard – Simple, Flexibile Authorization
@@ -187,7 +185,7 @@ Note that if `Repo.get!` fails due to an invalid ID, the action will raise an ex
 
 `nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
 
-### Handling `authorize!/3`
+### Handling `authorize!/3` Errors
 
 For Phoenix apps, presenting error views in `MyApp.ErrorView` is often enough.
 
@@ -206,7 +204,7 @@ end
 
 ### Controller-Wide Authorization
 
-For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved.
+For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved from the database.
 
 To lock down an entire controller using this technique, use `authorize!` as a `plug`. Keep in mind you will have to implement `can?/3` functions on the policy to match the module name, even for member actions like `:show` and `:edit`:
 
@@ -214,6 +212,33 @@ To lock down an entire controller using this technique, use `authorize!` as a `p
 defmodule MyApp.ManageUserController do
   plug :authorize!, User  # <-- pre-authorize all actions
   # ...
+end
+```
+
+### Nested Resources
+
+To authenticate a nested resource, it is common to authorize the parent resource before performing the child resource's action. This can also be accomplished via a controller plug.
+
+If the authorization check consists of a simple foreign key comparison (e.g. `current_user` can only modify a resource if its `user_id` equals `current_user.id`), then the resource struct can be constructed in memory without requiring a round-trip to the database.
+
+```elixir
+# router.ex
+resources "/companies", CompanyController do
+  resources "/users", UserController
+end
+
+# user_controller.ex
+defmodule MyApp.UserController do
+  plug :authorize_company!
+  
+  defp authorize_company!(%{params: %{"company_id" => company_id}} = conn) do
+    # Create this Company in-memory since we only care about its ID
+    company = %Company{id: company_id}
+
+    # Authorize the :update action of the parent company as a generic
+    # policy for this company's user actions
+    authorize!(conn, company, action: :update)
+  end
 end
 ```
 
