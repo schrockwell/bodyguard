@@ -41,9 +41,8 @@ defmodule Bodyguard do
       Bodyguard.authorized?(user, :show, post)
       Bodyguard.authorized?(user, :index, MyApp.Post)
   
-  You can explicitly specify the policy module using the `:policy` option:
-
-      Bodyguard.authorized?(user, :show, post, policy: MyApp.DraftPost.Policy)
+  Available options:
+  * `policy` (atom) - override the policy determined from the term
   """
   def authorized?(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
@@ -79,5 +78,21 @@ defmodule Bodyguard do
   def scoped(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
     apply(module, :scope, [user, action, opts])
+  end
+
+  @doc """
+  Specify which schema attributes may be updated by the current user.
+
+  The policy module must define a function `permitted_attributes(user, term)`
+  which returns a list of atoms corresponding to the fields that may 
+  be updated. This resulting list is often passed to `Ecto.Changeset.cast/3` 
+  to whitelist the parameters being passed in to the changeset.
+
+  Available options:
+  * `policy` (atom) - override the policy determined from the term
+  """
+  def permitted_attributes(user, term, opts \\ []) do
+    module = opts[:policy] || policy_module(term)
+    apply(module, :permitted_attributes, [user, term])
   end
 end

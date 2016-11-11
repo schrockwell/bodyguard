@@ -30,6 +30,10 @@ defmodule BodyguardTest do
             -> :guest_posts_scope
         end
       end
+
+      def permitted_attributes(%User{role: :admin}, _post), do: [:one, :two, :three]
+      def permitted_attributes(%User{id: id}, %Post{user_id: user_id}) when user_id == id, do: [:one]
+      def permitted_attributes(_user, _post), do: []
     end
   end
 
@@ -90,6 +94,17 @@ defmodule BodyguardTest do
     assert authorized?(admin, :edit, post)
     assert authorized?(admin, :show, post)
     assert authorized?(admin, :delete, post)
+  end
+
+  test "permitted attributes" do
+    owner = %User{id: 1, role: :guest}
+    admin = %User{id: 2, role: :admin}
+    guest = %User{}
+    post = %Post{user_id: 1}
+
+    assert permitted_attributes(admin, post) == [:one, :two, :three]
+    assert permitted_attributes(owner, post) == [:one]
+    assert permitted_attributes(guest, post) == []
   end
 
   test "controller integration" do

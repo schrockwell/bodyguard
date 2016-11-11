@@ -22,7 +22,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 
     ```elixir
     def deps do
-      [{:bodyguard, "~> 0.2.0"}]
+      [{:bodyguard, "~> 0.3.0"}]
     end
     ```
 
@@ -102,6 +102,32 @@ defmodule Post.Policy
 end
 ```
 
+## Permitted Attributes
+
+The policy module can also specify which schema attributes may be modified by a given user. Define `permitted_attributes(user, term)` and return a list of atoms.
+
+If you are using Ecto, the result can be passed into `Ecto.Changeset.cast/3` to whitelist parameters in a changeset.
+
+```elixir
+defmodule Post.Policy
+  # ...
+
+  # Admins can change anything
+  def permitted_attributes(%User{role: :admin}, _post) do
+    [:title, :body, :user_id]
+  end
+
+  # Post authors can only change the post body
+  def permitted_attributes(%User{id: user_id}, %Post{user_id: post_user_id})
+  when user_id == post_user_id do
+    [:body]
+  end
+
+  # Otherwise, blacklist everything
+  def permitted_attributes(_user, _post), do: []
+end
+```
+
 ## Authorizing Controller Actions
 
 The `Bodyguard.Controller` module contains helper functions designed to provide authorization in controller actions. You should probably import it in `web.ex` so it is available to all controllers.
@@ -111,6 +137,7 @@ The user to authorize is retrieved from `conn.assigns[:current_user]`.
 * `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
 * `authorize!/3` returns a modified `conn` on success, and will raise `Bodyguard.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
 * `scope/3` will call the appropriate `scope` function on your policy module for the current user
+* `permitted_attributes/3` will call the appropriate `permitted_attributes` function on your policy module for the current user
 * The `verify_authorized` plug will ensure that an authorization check was performed. It runs the check at the end of each action, immediately before returning the response, and will fail if authorization was not performed.
 * `mark_authorized/1` will explicitly force authorization to succeed
 
@@ -249,6 +276,7 @@ end
   ```elixir
   authorize!(conn, post, policy: FeaturedPost.Policy)
   scope(conn, Post, policy: FeaturedPost.Policy)
+  permitted_attributes(conn, post, policy: FeaturedPost.Policy)
   ```
 
 * `:action` – Override the action
@@ -263,6 +291,7 @@ end
   ```elixir
   authorize!(conn, post, user: other_user)
   scope(conn, Post, user: other_user)
+  permitted_attributes(conn, post, user: other_user)
   ```
 
 * `:error_status` – Override the HTTP return status when authorization fails
