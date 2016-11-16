@@ -4,7 +4,7 @@ defmodule Bodyguard.NotAuthorizedError do
   an authorization check has not been performed by the end of
   the Plug pipeline.
   """
-  defexception [:message, :status]
+  defexception [:message, :status, :reason]
 end
 
 defimpl Plug.Exception, for: Bodyguard.NotAuthorizedError do

@@ -78,6 +78,11 @@ defmodule Post.Policy do
 end
 ```
 
+The result of a `can?/3` callback is flexibile:
+
+* `true` and `:ok` results count as authorized
+* `false`, `:error`, and `{:error, reason}` results are unauthorized
+
 ## Policy Scopes
 
 Another idea borrowed from Pundit, **policy scopes** are a way to embed logic about what resources a particular user can see or otherwise access.
@@ -134,7 +139,7 @@ The `Bodyguard.Controller` module contains helper functions designed to provide 
 
 The user to authorize is retrieved from `conn.assigns[:current_user]`.
 
-* `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, :unauthorized}` on failure.
+* `authorize/3` returns the tuple `{:ok, conn}` on success, and `{:error, reason}` on failure.
 * `authorize!/3` returns a modified `conn` on success, and will raise `Bodyguard.NotAuthorizedError` on failure. By default, this exception will cause Plug to return HTTP status code 403 Forbidden.
 * `scope/3` will call the appropriate `scope` function on your policy module for the current user
 * `permitted_attributes/3` will call the appropriate `permitted_attributes` function on your policy module for the current user
@@ -309,7 +314,7 @@ Post.Policy.can?(user, :edit, post)  # <-- returns boolean
 Post.Policy.scope(user, :index)      # <-- returns query for posts
 ```
 
-Or you can use the `Bodyguard` module to determine the policy module automatically.
+Or you can use the core `Bodyguard` module to determine the policy module automatically.
 
 ```elixir
 Bodyguard.authorized?(user, :edit, post)  # <-- defers to Post.Policy.can?/3
@@ -346,15 +351,6 @@ Check out these other libraries:
 
 * [Canada](https://github.com/jarednorman/canada)
 * [Canary](https://github.com/cpjk/canary)
-
-## Ideas for Future Work
-
-* Add helper for controllers that just returns a boolean (no block)
-* Add helpers for views
-* Add helpers for Phoenix sockets and channels
-* Similar to policy scopes, add **policy changesets**, which will build a changeset based on a users' privileges
-* ...?
-* Profit!
 
 ## License
 

@@ -1,12 +1,10 @@
 defmodule Bodyguard do
   @moduledoc """
-  Bodyguard can be used to authorize user actions for resources. It has no
-  external dependencies, so it will work in any Elixir app as a basic 
-  authorization mechanism.
+  Bodyguard imposes a simple module naming convention to express authorization policies.
 
-  See the readme for more information and examples.
+  See the README for more information and examples.
 
-  For common integration patterns in Plug-based web applications, check out
+  For integration with Plug-based web applications (e.g. Phoenix), check out
   `Bodyguard.Controller`.
   """
 
@@ -31,8 +29,10 @@ defmodule Bodyguard do
   def policy_module(_), do: :error
 
   @doc """
-  Returns a boolean determining if the user's action is authorized via the appropriate
+  Returns a value determining if the user's action is authorized via the appropriate
   policy module for that resource.
+
+  The result is returned directly from the `can?/3` callback.
 
   `policy_module/1` is used to find the module, then calls `can?(user, action, term)` on it.
 
@@ -46,7 +46,7 @@ defmodule Bodyguard do
   """
   def authorized?(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
-    !!apply(module, :can?, [user, action, term])
+    apply(module, :can?, [user, action, term])
   end
 
   @doc """

@@ -9,6 +9,10 @@ defmodule Policy.HelpersTest do
     def can?(_user, :test, model), do: model.permit
   end
 
+  defmodule MockStruct.CustomErrorPolicy do
+    def can?(_user, _action, _model), do: {:error, :because_i_said_so}
+  end
+
   defmodule MockStruct.PermitNilPolicy do
     def can?(_user, _action, nil), do: true
   end
@@ -27,9 +31,11 @@ defmodule Policy.HelpersTest do
     try do
       Bodyguard.Controller.authorize!(conn, %MockStruct{permit: false})
       flunk "exception not raised"
-    rescue exception ->
-      assert Plug.Exception.status(exception) == 403
-      assert exception.message == "not authorized"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 403
+        assert exception.message == "not authorized"
+        assert exception.reason == :unauthorized
     end
   end
 
@@ -37,9 +43,11 @@ defmodule Policy.HelpersTest do
     try do
       Bodyguard.Controller.authorize!(conn, %MockStruct{permit: false}, error_status: 404)
       flunk "exception not raised"
-    rescue exception ->
-      assert Plug.Exception.status(exception) == 404
-      assert exception.message == "not authorized"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 404
+        assert exception.message == "not authorized"
+        assert exception.reason == :unauthorized
     end
   end
 
@@ -58,9 +66,11 @@ defmodule Policy.HelpersTest do
       |> Plug.Conn.send_resp(200, "Hello, World!")
 
       flunk "exception not raised"
-    rescue exception ->
-      assert Plug.Exception.status(exception) == 403
-      assert exception.message == "no authorization run"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 403
+        assert exception.message == "no authorization run"
+        assert exception.reason == :no_authorization_run
     end
   end
 
@@ -90,9 +100,11 @@ defmodule Policy.HelpersTest do
     try do
       Bodyguard.Controller.authorize!(conn, nil)
       flunk "exception not raised"
-    rescue exception ->
-      assert Plug.Exception.status(exception) == 403
-      assert exception.message == "not authorized"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 403
+        assert exception.message == "not authorized"
+        assert exception.reason == :unauthorized
     end
   end
 
@@ -108,9 +120,23 @@ defmodule Policy.HelpersTest do
     try do
       Bodyguard.Controller.authorize!(conn, nil, policy: MockStruct.DenyNilPolicy)
       flunk "exception not raised"
-    rescue exception ->
-      assert Plug.Exception.status(exception) == 403
-      assert exception.message == "not authorized"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 403
+        assert exception.message == "not authorized"
+        assert exception.reason == :unauthorized
+    end
+  end
+
+  test "authorization with a custom error reason", %{conn: conn} do
+    try do
+      Bodyguard.Controller.authorize!(conn, nil, policy: MockStruct.CustomErrorPolicy)
+      flunk "exception not raised"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert Plug.Exception.status(exception) == 403
+        assert exception.message == "not authorized"
+        assert exception.reason == :because_i_said_so
     end
   end
 end

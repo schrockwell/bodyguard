@@ -5,17 +5,31 @@ defmodule Bodyguard.Controller do
   """
 
   @doc """
-  Authorizes the controller action for the current user and executes the given block if successful.
+  Authorizes the controller action for the current user.
+
+  On success, returns `{:ok, conn}` with a modified `conn` that is marked as authorized 
+  – see `verify_authorized/2`.
+
+  On failure, returns `{:error, :unauthorized}` by default, or passes through
+  `{:error, reason}` if the policy function explicitly returns that.
 
       def index(conn, _params) do
-        {:ok, conn} = authorize(conn, Post)
-        # ...
+        case authorize(conn, Post) do
+          {:ok, conn} -> 
+            # ...
+          {:error, reason} ->
+            # ...
+        end
       end
 
       def show(conn, %{"id" => id}) do
         post = Repo.get(Post, id)
-        {:ok, conn} = authorize(conn, post)
-        # ...
+        case authorize(conn, post) do
+          {:ok, conn} ->
+            # ...
+          {:error, reason} ->
+            # ...
+        end
       end
 
   Available options:
@@ -28,15 +42,27 @@ defmodule Bodyguard.Controller do
     user = opts[:user] || get_current_user(conn)
     explicit_policy = opts[:policy]
 
-    cond do
-      is_nil(term) && is_nil(explicit_policy) -> {:error, :unauthorized}
-      Bodyguard.authorized?(user, action, term, opts) -> {:ok, mark_authorized(conn)}
-      true -> {:error, :unauthorized}
+    if is_nil(term) && is_nil(explicit_policy) do
+      # If no data to authorize, we can't determine the policy
+      # module automatically (e.g. Repo.get returned nil)
+      {:error, :unauthorized}
+    else
+      case Bodyguard.authorized?(user, action, term, opts) do
+        success when success in [true, :ok] ->
+          {:ok, mark_authorized(conn)}
+        failure when failure in [false, :error] ->
+          {:error, :unauthorized}
+        {:error, reason} ->
+          {:error, reason}
+        unexpected ->
+          raise "Unexpected result from policy function: #{inspect(unexpected)}"
+      end
     end
   end
 
   @doc """
-  Similar to `authorize/3` but raises `Bodyguard.NotAuthorizedError` if no record was found.
+  Similar to `authorize/3` but returns a modified `conn` on success and
+  raises `Bodyguard.NotAuthorizedError` on failure.
 
   Available options:
   * `action` (atom) - override the controller action picked up from conn
@@ -51,10 +77,11 @@ defmodule Bodyguard.Controller do
 
     case authorize(conn, term, opts) do
       {:ok, conn} -> conn
-      {:error, _reason} ->
+      {:error, reason} ->
         raise Bodyguard.NotAuthorizedError,
           message: error_message,
-          status: error_status
+          status: error_status,
+          reason: reason
     end
   end
 
@@ -119,7 +146,8 @@ defmodule Bodyguard.Controller do
       unless after_conn.private[:bodyguard_authorized] do
         raise Bodyguard.NotAuthorizedError,
           message: error_message,
-          status: error_status
+          status: error_status,
+          reason: :no_authorization_run
       end
 
       after_conn
@@ -135,7 +163,7 @@ defmodule Bodyguard.Controller do
     Plug.Conn.put_private(conn, :bodyguard_authorized, true)
   end
 
-
+  # Private
 
   defp get_current_user(conn) do
     key = Application.get_env(:bodyguard, :current_user, :current_user)
