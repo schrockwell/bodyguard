@@ -1,6 +1,6 @@
 defmodule Bodyguard.Controller do
   @moduledoc """
-  Convenience functions Phoenix/Plug controller authorization.
+  Convenience functions for Phoenix/Plug controller authorization.
   """
 
   @doc """
