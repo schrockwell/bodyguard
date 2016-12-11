@@ -59,6 +59,14 @@ defmodule Policy.HelpersTest do
     end
   end
 
+  test "authorizing a permitted action returns true", %{conn: conn} do
+    assert Bodyguard.Controller.authorized?(conn, %MockStruct{permit: true}) == true
+  end
+
+  test "authorizing a nonpermitted action returns false", %{conn: conn} do
+    assert Bodyguard.Controller.authorized?(conn, %MockStruct{permit: false}) == false
+  end
+
   test "failing to authorize after verifying it is authorized is run raises an exception", %{conn: conn} do
     try do
       conn

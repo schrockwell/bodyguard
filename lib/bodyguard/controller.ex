@@ -86,6 +86,21 @@ defmodule Bodyguard.Controller do
   end
 
   @doc """
+  Similar to `authorize/3` but returns boolean value.
+
+  Available options:
+  * `action` (atom) - override the controller action picked up from conn
+  * `user` (term) - override the current user picked up from conn
+  * `policy` (atom) - override the policy determined from the term
+  """
+  def authorized?(conn, term, opts \\ []) do
+    case authorize(conn, term, opts) do
+      {:ok, _}    -> true
+      {:error, _} -> false
+    end
+  end
+
+  @doc """
   Scopes the current resource based on the action and user.
 
       def index(conn, _params) do
