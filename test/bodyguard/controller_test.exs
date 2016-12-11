@@ -59,14 +59,6 @@ defmodule Policy.HelpersTest do
     end
   end
 
-  test "authorizing a permitted action returns true", %{conn: conn} do
-    assert Bodyguard.Controller.authorized?(conn, %MockStruct{permit: true}) == true
-  end
-
-  test "authorizing a nonpermitted action returns false", %{conn: conn} do
-    assert Bodyguard.Controller.authorized?(conn, %MockStruct{permit: false}) == false
-  end
-
   test "failing to authorize after verifying it is authorized is run raises an exception", %{conn: conn} do
     try do
       conn
@@ -146,5 +138,15 @@ defmodule Policy.HelpersTest do
         assert exception.message == "not authorized"
         assert exception.reason == :because_i_said_so
     end
+  end
+
+  test "view helpers", %{conn: conn} do
+    # Plug.Conn as first argument
+    assert Bodyguard.ViewHelpers.can?(conn, :test, %MockStruct{permit: true})
+    refute Bodyguard.ViewHelpers.can?(conn, :test, %MockStruct{permit: false})
+
+    # User as first argument
+    assert Bodyguard.ViewHelpers.can?(:some_user, :test, %MockStruct{permit: true})
+    refute Bodyguard.ViewHelpers.can?(:some_user, :test, %MockStruct{permit: false})
   end
 end

@@ -1,7 +1,6 @@
 defmodule Bodyguard.Controller do
   @moduledoc """
-  Import this in your Phoenix or Plug application controller to gain convenience
-  functions for performing authorization.
+  Convenience functions Phoenix/Plug controller authorization.
   """
 
   @doc """
@@ -86,21 +85,6 @@ defmodule Bodyguard.Controller do
   end
 
   @doc """
-  Similar to `authorize/3` but returns boolean value.
-
-  Available options:
-  * `action` (atom) - override the controller action picked up from conn
-  * `user` (term) - override the current user picked up from conn
-  * `policy` (atom) - override the policy determined from the term
-  """
-  def authorized?(conn, term, opts \\ []) do
-    case authorize(conn, term, opts) do
-      {:ok, _}    -> true
-      {:error, _} -> false
-    end
-  end
-
-  @doc """
   Scopes the current resource based on the action and user.
 
       def index(conn, _params) do
@@ -178,12 +162,20 @@ defmodule Bodyguard.Controller do
     Plug.Conn.put_private(conn, :bodyguard_authorized, true)
   end
 
-  # Private
+  @doc """
+  Retrieves the authenticated current user, previously assigned to the `conn`.
 
-  defp get_current_user(conn) do
+  By default, the assign key is `:current_user`, but this may be changed
+  with the `:current_user` configuration option:
+
+      config :bodyguard, current_user: :my_custom_assign_key
+  """
+  def get_current_user(conn) do
     key = Application.get_env(:bodyguard, :current_user, :current_user)
     conn.assigns[key]
   end
+
+  # Private
 
   defp get_action(conn) do
     conn.assigns[:action] || conn.private[:phoenix_action]
