@@ -1,12 +1,6 @@
-# Authy is now Bodyguard
-
-Due to potential naming conflicts, the package previously known as **Authy** is now **Bodyguard** beginning with version 0.2.0.
-
-This renaming also comes with a number of API changes that differ from `authy`, namely replacing the `authorize` and `scope` block-style macros with standard functions. Details are below.
-
 # Bodyguard – Simple, Flexibile Authorization
 
-Bodyguard is an authorization library that imposes a simple module naming convention to express authorization.
+Bodyguard (previously named Authy) is an authorization library that imposes a simple module naming convention to express authorization.
 
 It supplies some handy functions to DRY up controller actions in Phoenix and other Plug-based apps.
 
@@ -26,17 +20,20 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
     end
     ```
 
-  2. Add `import Bodyguard.Controller` to the `controller/0` method of `web.ex` to make its functions available.
+  2. Add imports in `web.ex` to make convenience functions available.
 
     ```elixir
     # lib/my_app/web.ex
 
     defmodule MyApp.Web do
-      # ...
       def controller do
         quote do
-          # ...
           import Bodyguard.Controller  # <-- new
+        end
+      end
+      def view do
+        quote do
+          import Bodyguard.ViewHelpers  # <-- new
         end
       end
     end
@@ -305,6 +302,18 @@ end
   authorize!(conn, post, error_status: 404)
   ```
 
+## View Helpers
+
+Authorization may be performed in views via the `Bodyguard.ViewHelpers.can?/4` function, which you should import into your view modules.
+
+```eex
+<%= if can?(@conn, :delete, post) do %>
+  <%= link "Delete", to: post_path(@conn, :delete, post), method: :delete %>
+<% end %>
+```
+
+The first argument can be either a `Plug.Conn` or a user model. The `:policy` option may be provided to override the default policy.
+
 ## Authorization Outside of Controllers
 
 Policies are just plain old modules, so you can call them directly:
@@ -358,6 +367,4 @@ MIT License, Copyright (c) 2016 Rockwell Schrock
 
 ## Acknowledgements
 
-Thank you to the following contributors:
-
-* [Ben Cates](https://github.com/bencates)
+Thanks to [Ben Cates](https://github.com/bencates) for helping maintain and mature this library.
