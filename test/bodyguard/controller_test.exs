@@ -149,4 +149,17 @@ defmodule Policy.HelpersTest do
     assert Bodyguard.ViewHelpers.can?(:some_user, :test, %MockStruct{permit: true})
     refute Bodyguard.ViewHelpers.can?(:some_user, :test, %MockStruct{permit: false})
   end
+
+  test "default options plug", %{conn: conn} do
+    # Basic case
+    struct = %MockStruct{permit: true}
+    assert Bodyguard.Controller.authorize(conn, struct)
+
+    # Now set a default on this conn, like a plug would do
+    conn = Bodyguard.Controller.put_bodyguard_options(conn, policy: MockStruct.CustomErrorPolicy)
+
+    # Check that the default works, and can still be overridden
+    assert Bodyguard.Controller.authorize(conn, struct) == {:error, :because_i_said_so}
+    assert Bodyguard.Controller.authorize(conn, struct, policy: MockStruct.Policy)
+  end
 end

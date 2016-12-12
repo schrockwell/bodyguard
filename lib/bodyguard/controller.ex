@@ -37,6 +37,7 @@ defmodule Bodyguard.Controller do
   * `policy` (atom) - override the policy determined from the term
   """
   def authorize(conn, term, opts \\ []) do
+    opts = merge_options(conn, opts)
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
     explicit_policy = opts[:policy]
@@ -71,6 +72,7 @@ defmodule Bodyguard.Controller do
   * `error_status` (integer) - override the default HTTP error code
   """
   def authorize!(conn, term, opts \\ []) do
+    opts = merge_options(conn, opts)
     error_message = opts[:error_message] || "not authorized"
     error_status = opts[:error_status] || 403
 
@@ -105,6 +107,7 @@ defmodule Bodyguard.Controller do
   * `policy` (atom) - override the policy determined from the term
   """
   def scope(conn, term, opts \\ []) do
+    opts = merge_options(conn, opts)
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
 
@@ -124,6 +127,7 @@ defmodule Bodyguard.Controller do
   * `policy` (atom) - override the policy determined from the term  
   """
   def permitted_attributes(conn, term, opts \\ []) do
+    opts = merge_options(conn, opts)
     user = opts[:user] || get_current_user(conn)
     Bodyguard.permitted_attributes(user, term, opts)
   end
@@ -138,6 +142,7 @@ defmodule Bodyguard.Controller do
   * `error_status` (integer) - override the default HTTP error code
   """
   def verify_authorized(conn, opts \\ []) do
+    opts = merge_options(conn, opts)
     error_message = opts[:error_message] || "no authorization run"
     error_status = opts[:error_status] || 403
 
@@ -175,9 +180,38 @@ defmodule Bodyguard.Controller do
     conn.assigns[key]
   end
 
+  @doc """
+  A plug to set controller-wide authorization options.
+
+  This is a controller plug to apply shared authorization options
+  to all its actions. Any per-action options will be merged with 
+  these default options.
+
+  These defaults do *not* apply to the view helpers.
+
+  For example, to specify a custom policy module for a controller:
+
+      defmodule MyApp.DraftController do
+        use MyApp.Web, :controller
+
+        plug :put_bodyguard_options, policy: Post.DraftPolicy
+
+        # Authorization checks in this controller will use
+        # Post.DraftPolicy unless otherwise specified
+      end
+  """
+  def put_bodyguard_options(conn, opts) do
+    Plug.Conn.put_private(conn, :bodyguard_options, opts)
+  end
+
   # Private
 
   defp get_action(conn) do
     conn.assigns[:action] || conn.private[:phoenix_action]
   end
+
+  defp merge_options(%Plug.Conn{private: %{bodyguard_options: conn_options}}, opts) do
+    Keyword.merge(conn_options, opts)
+  end
+  defp merge_options(_, opts), do: opts
 end
