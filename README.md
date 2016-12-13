@@ -16,7 +16,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 
     ```elixir
     def deps do
-      [{:bodyguard, "~> 0.4.0"}]
+      [{:bodyguard, "~> 0.5.0"}]
     end
     ```
 
