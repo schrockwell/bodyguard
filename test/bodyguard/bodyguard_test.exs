@@ -21,8 +21,8 @@ defmodule BodyguardTest do
       def can?(_user, :show, _post), do: true
       def can?(_, _, _), do: false
 
-      def scope(_user, :index, _opts), do: :all_posts_scope
-      def scope(user, _action, _opts) do
+      def scope(_user, :index, scope), do: scope
+      def scope(user, _action, _scope) do
         case user do
           %{role: :admin}
             -> :admin_posts_scope
@@ -75,9 +75,11 @@ defmodule BodyguardTest do
   test "policy scopes" do
     guest = %User{role: :guest}
     admin = %User{role: :admin}
+    scope = %{from: {"posts", Post}} # Fake the structure of an Ecto query
 
     assert scoped(nil, :edit, Post) == :guest_posts_scope
-    assert scoped(nil, :index, Post) == :all_posts_scope
+    assert scoped(nil, :index, Post) == Post
+    assert scoped(nil, :index, scope) == scope
     assert scoped(guest, :edit, Post) == :guest_posts_scope
     assert scoped(admin, :edit, Post) == :admin_posts_scope
   end
@@ -116,13 +118,13 @@ defmodule BodyguardTest do
 
     # Test index action - everyone is authorized! So just test the scope
     conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == :all_posts_scope
+    assert PostController.index(conn, params) == Post
 
     conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == :all_posts_scope
+    assert PostController.index(conn, params) == Post
 
     conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == :all_posts_scope
+    assert PostController.index(conn, params) == Post
 
     # Test edit action
     conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :edit}}

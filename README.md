@@ -10,6 +10,8 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 * [GitHub](https://github.com/schrockwell/bodyguard)
 * [Docs](https://hexdocs.pm/bodyguard/)
 
+**This readme is on the `master` branch** and might be newer than what's published to Hex. [The latest release is here.](https://github.com/schrockwell/bodyguard/tree/v0.5.0)
+
 ## Installation
 
   1. Add `bodyguard` to your list of dependencies in `mix.exs`:
@@ -53,7 +55,7 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 
 ## Policies
 
-Authorization logic is contained in **policy modules** – one module per resource to be authorized.
+Authorization logic is contained in a **policy module** – one module per resource to be authorized.
 
 To define a policy for a `Post`, create a module `Post.Policy` with the authorization logic defined in `can?(user, action, term)` functions:
 
@@ -84,25 +86,29 @@ The result of a `can?/3` callback is flexibile:
 
 Another idea borrowed from Pundit, **policy scopes** are a way to embed logic about what resources a particular user can see or otherwise access.
 
-It's just another simple naming convention. Define `scope(user, action, opts)` functions in your policy module to utilize it.
+It's just another simple naming convention. Define `scope(user, action, scope)` functions in your policy module to utilize it. Each callback should return a subset of the passed-in `scope` argument.
 
 ```elixir
 defmodule Post.Policy
+  import Ecto.Query
   # ...
 
   # Admin sees all posts
-  def scope(%User{role: :admin}, :index, _opts), 
-    do: Ecto.Query.from(Post)
+  def scope(%User{role: :admin}, _action, scope), do: scope
 
   # User sees their posts only
-  def scope(%User{role: :user, id: id}, :index, _opts), 
-    do: Ecto.Query.where(Post, user_id: ^id)
+  def scope(%User{role: :user, id: id}, _action, scope), 
+    do: where(scope, user_id: ^id)
 
   # Guest sees published posts only
-  def scope(nil, :index, _opts), 
-    do: Ecto.Query.where(Post, published: true)
+  def scope(nil, _action, scope),
+    do: where(scope, published: true)
 end
 ```
+
+The `scope` argument can be a struct, module name, or Ecto query. If it's something else, you must pass the `policy` option since the policy cannot be inferred automatically.
+
+**If you have upgraded from v0.5.0 or earlier,** this is new behavior. The function signature of the `scope/3` callback has changed such that `opts` are no longer used in the callbacks. There will be a warning in the terminal if you try to pass in your own `opts`.
 
 ## Permitted Attributes
 
@@ -212,7 +218,7 @@ end
 
 Note that if `Repo.get!` fails due to an invalid ID, the action will raise an exception and render a 404 Not Found page, which is the desired behavior in most cases.
 
-`nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the data.
+`nil` data will not defer to any policy module, and will fail authorization by default. If the `:policy` option is explicitly specified, then that policy module will be used, passing `nil` as the `term`.
 
 ### Handling `authorize!/3` Errors
 
@@ -235,12 +241,21 @@ end
 
 For more sensitive controllers (e.g. admin control panels), you may not want to leak the details of a particular resource's existence. In that case, you can pre-authorize before even attempting to fetch the record, additionally authorizing that particular resource once it has been retrieved from the database.
 
-To lock down an entire controller using this technique, use `authorize!` as a `plug`. Keep in mind you will have to implement `can?/3` functions on the policy to match the module name, even for member actions like `:show` and `:edit`:
+To lock down an entire controller using this technique, use `authorize!` as a plug. Keep in mind you will have to implement `can?/3` callbacks where `term` is the module name, even for member actions like `:show` and `:edit`.
 
 ```elixir
 defmodule MyApp.ManageUserController do
   plug :authorize!, User  # <-- pre-authorize all actions
   # ...
+end
+```
+
+If you have options that are the same throughout an entire controller, there's a plug for that:
+
+```elixir
+defmodule MyApp.DraftController do
+  plug :put_bodyguard_options, policy: Post.DraftPolicy
+  # All actions will use Post.DraftPolicy unless overridden
 end
 ```
 

@@ -1,12 +1,13 @@
 defmodule Bodyguard do
   @moduledoc """
-  Bodyguard imposes a simple module naming convention to express authorization policies.
+  Bodyguard imposes a simple module naming convention to express authorization
+  policies.
 
-  See the README for more information and examples.
-
-  For integration with Plug-based web applications (e.g. Phoenix), check out
-  `Bodyguard.Controller`.
+  For easy integration with Plug-based web applications (e.g. Phoenix), check
+  out `Bodyguard.Controller`.
   """
+
+  require Logger
 
   @doc """
   Given a data structure, determines the policy module to call for authorization
@@ -23,9 +24,21 @@ defmodule Bodyguard do
       policy_module("Derp") # => :error
 
   """
+
+  # Unable to determine for nil
   def policy_module(nil), do: :error
+
+  # For Ecto queries
+  def policy_module(%{from: {source, schema}})
+    when is_binary(source) and is_atom(schema), do: policy_module(schema)
+
+  # For structs
   def policy_module(%{__struct__: s}), do: policy_module(s)
+
+  # For schemas
   def policy_module(term) when is_atom(term), do: String.to_atom("#{term}.Policy")
+
+  # Unable to determine
   def policy_module(_), do: :error
 
   @doc """
@@ -52,32 +65,39 @@ defmodule Bodyguard do
   @doc """
   Scope resources based on the current user.
 
-  For example, a regular user can only see posts they have created,
-  but an admin can see all posts. You can define a `scope/2` method 
-  on the policy module to return the appropriate scope for that user.
+  See also: `Bodyguard.Controller.scope/3`
 
-  Any options are passed through to `opts` on your `scope/2` method.
+  Define a `scope(user, action, scope)` callback on the policy module to return
+  the appropriate scope for that user.
 
-  This examples scopes an Ecto query of posts a user can see.
+  If the `scope` argument is a struct, module name, or an Ecto query, the schema
+  can be automatically inferred. Otherwise, you must pass the `policy` option to
+  explicitly determine the policy.
+
+  This example scopes an Ecto query of posts a user can see.
 
       # post_policy.ex
       defmodule MyApp.Post.Policy
         # A user can only see their own posts, but an admin can see all posts
-        def scope(user, _action, opts \\ []) do
-          case user.role do
-            "user" -> MyApp.Post |> where(user_id: ^user.id)
-            "admin" -> MyApp.Post
-            _ -> {:error, :unknown_role}
-          end
+        def scope(%{role: "user", id: user_id}, _action, scope) do 
+          scope |> where(user_id: user_id)
         end
+
+        def scope(%{role: "admin"}, _action, scope), do: scope
       end
 
-      # post_controller.ex
-      posts = Bodyguard.scoped(current_user, MyApp.Post) |> Repo.all
+      # elsewhere
+      posts = Bodyguard.scoped(current_user, :index, MyApp.Post) |> Repo.all
   """
-  def scoped(user, action, term, opts \\ []) do
-    module = opts[:policy] || policy_module(term)
-    apply(module, :scope, [user, action, opts])
+  def scoped(user, action, scope, opts \\ []) do
+    module = opts[:policy] || policy_module(scope)
+
+    # TODO v1.0: Remove deprecation warning
+    if Keyword.keyword?(opts) && Keyword.keys(opts) != [] && Keyword.keys(opts) != [:policy] do
+      Logger.warn("Passing opts to the #{module}.scope/3 callback is deprecated. The new callback function signature is #{module}.scope(user, action, scope). Use the scope argument instead.")
+    end
+
+    apply(module, :scope, [user, action, scope])
   end
 
   @doc """

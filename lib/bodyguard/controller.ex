@@ -1,15 +1,16 @@
 defmodule Bodyguard.Controller do
   @moduledoc """
-  Convenience functions for Phoenix/Plug controller authorization.
+  Include this module in your Phoenix/Plug controllers to gain wrapper
+  functions for authorization.
   """
 
   @doc """
   Authorizes the controller action for the current user.
 
   On success, returns `{:ok, conn}` with a modified `conn` that is marked as authorized 
-  – see `verify_authorized/2`.
+  (see `verify_authorized/2` ).
 
-  On failure, returns `{:error, :unauthorized}` by default, or passes through
+  On failure, returns `{:error, :unauthorized}` by default, or returns
   `{:error, reason}` if the policy function explicitly returns that.
 
       def index(conn, _params) do
@@ -32,9 +33,9 @@ defmodule Bodyguard.Controller do
       end
 
   Available options:
-  * `action` (atom) - override the controller action picked up from conn
-  * `user` (term) - override the current user picked up from conn
-  * `policy` (atom) - override the policy determined from the term
+  * `action` (atom) - override the controller action picked up from `conn`
+  * `user` (term) - override the current user picked up from `conn`
+  * `policy` (atom) - override the policy determined from `term`
   """
   def authorize(conn, term, opts \\ []) do
     opts = merge_options(conn, opts)
@@ -65,9 +66,9 @@ defmodule Bodyguard.Controller do
   raises `Bodyguard.NotAuthorizedError` on failure.
 
   Available options:
-  * `action` (atom) - override the controller action picked up from conn
-  * `user` (term) - override the current user picked up from conn
-  * `policy` (atom) - override the policy determined from the term
+  * `action` (atom) - override the controller action picked up from `conn`
+  * `user` (term) - override the current user picked up from `conn`
+  * `policy` (atom) - override the policy determined from `term`
   * `error_message` (String) - override the default error message
   * `error_status` (integer) - override the default HTTP error code
   """
@@ -89,6 +90,10 @@ defmodule Bodyguard.Controller do
   @doc """
   Scopes the current resource based on the action and user.
 
+  If the `scope` argument is a struct, module name, or an Ecto query, the schema
+  can be automatically inferred. Otherwise, you must pass the `policy` option to
+  explicitly determine the policy.
+
       def index(conn, _params) do
         {:ok, conn} = authorize(conn, Post)
         posts = scope(conn, Post) |> Repo.all
@@ -106,12 +111,12 @@ defmodule Bodyguard.Controller do
   * `user` (term) - override the current user picked up from conn
   * `policy` (atom) - override the policy determined from the term
   """
-  def scope(conn, term, opts \\ []) do
+  def scope(conn, scope, opts \\ []) do
     opts = merge_options(conn, opts)
     action = opts[:action] || get_action(conn)
     user = opts[:user] || get_current_user(conn)
 
-    Bodyguard.scoped(user, action, term, opts)
+    Bodyguard.scoped(user, action, scope, opts)
   end
 
   @doc """
