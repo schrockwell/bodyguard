@@ -12,6 +12,7 @@ defmodule Bodyguard.ViewHelpers do
   The first argument may be either a user model or a `Plug.Conn` out of which
   the user model will be extracted – see `Bodyguard.Controller.get_current_user/1`.
   """
+  @spec can?(Plug.Conn.t | term, atom, term, keyword) :: boolean
   def can?(conn_or_user, action, resource, opts \\ [])
   def can?(%Plug.Conn{} = conn, action, resource, opts) do
     can?(Bodyguard.Controller.get_current_user(conn), action, resource, opts)

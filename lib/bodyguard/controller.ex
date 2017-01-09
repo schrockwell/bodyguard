@@ -37,6 +37,7 @@ defmodule Bodyguard.Controller do
   * `user` (term) - override the current user picked up from `conn`
   * `policy` (atom) - override the policy determined from `term`
   """
+  @spec authorize(Plug.Conn.t, term, keyword) :: {:ok, Plug.Conn.t} | {:error, :unauthorized} | {:error, term}
   def authorize(conn, term, opts \\ []) do
     opts = merge_options(conn, opts)
     action = opts[:action] || get_action(conn)
@@ -72,6 +73,7 @@ defmodule Bodyguard.Controller do
   * `error_message` (String) - override the default error message
   * `error_status` (integer) - override the default HTTP error code
   """
+  @spec authorize!(Plug.Conn.t, term, keyword) :: Plug.Conn.t
   def authorize!(conn, term, opts \\ []) do
     opts = merge_options(conn, opts)
     error_message = opts[:error_message] || "not authorized"
@@ -111,6 +113,7 @@ defmodule Bodyguard.Controller do
   * `user` (term) - override the current user picked up from conn
   * `policy` (atom) - override the policy determined from the term
   """
+  @spec scope(Plug.Conn.t, term, keyword) :: term
   def scope(conn, scope, opts \\ []) do
     opts = merge_options(conn, opts)
     action = opts[:action] || get_action(conn)
@@ -131,6 +134,7 @@ defmodule Bodyguard.Controller do
   * `user` (term) - override the current user picked up from conn
   * `policy` (atom) - override the policy determined from the term  
   """
+  @spec permitted_attributes(Plug.Conn.t, term, keyword) :: [atom]
   def permitted_attributes(conn, term, opts \\ []) do
     opts = merge_options(conn, opts)
     user = opts[:user] || get_current_user(conn)
@@ -146,6 +150,7 @@ defmodule Bodyguard.Controller do
   * `error_message` (String) - override the default error message
   * `error_status` (integer) - override the default HTTP error code
   """
+  @spec verify_authorized(Plug.Conn.t, keyword) :: Plug.Conn.t
   def verify_authorized(conn, opts \\ []) do
     opts = merge_options(conn, opts)
     error_message = opts[:error_message] || "no authorization run"
@@ -168,6 +173,7 @@ defmodule Bodyguard.Controller do
 
   This is mainly used to satisfy `verify_authorized/2` when authorization is performed outside of Bodyguard.
   """
+  @spec mark_authorized(Plug.Conn.t) :: Plug.Conn.t
   def mark_authorized(conn) do
     Plug.Conn.put_private(conn, :bodyguard_authorized, true)
   end
@@ -180,6 +186,7 @@ defmodule Bodyguard.Controller do
 
       config :bodyguard, current_user: :my_custom_assign_key
   """
+  @spec get_current_user(Plug.Conn.t) :: Plug.Conn.t
   def get_current_user(conn) do
     key = Application.get_env(:bodyguard, :current_user, :current_user)
     conn.assigns[key]
@@ -205,6 +212,7 @@ defmodule Bodyguard.Controller do
         # Post.DraftPolicy unless otherwise specified
       end
   """
+  @spec put_bodyguard_options(Plug.Conn.t, keyword) :: Plug.Conn.t
   def put_bodyguard_options(conn, opts) do
     Plug.Conn.put_private(conn, :bodyguard_options, opts)
   end

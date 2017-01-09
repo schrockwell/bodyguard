@@ -25,6 +25,8 @@ defmodule Bodyguard do
 
   """
 
+  @spec policy_module(term) :: module | :error
+
   # Unable to determine for nil
   def policy_module(nil), do: :error
 
@@ -57,6 +59,7 @@ defmodule Bodyguard do
   Available options:
   * `policy` (atom) - override the policy determined from the term
   """
+  @spec authorized?(term, atom, term, keyword) :: boolean | :ok | :error | {:error, atom}
   def authorized?(user, action, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
     apply(module, :can?, [user, action, term])
@@ -89,6 +92,7 @@ defmodule Bodyguard do
       # elsewhere
       posts = Bodyguard.scoped(current_user, :index, MyApp.Post) |> Repo.all
   """
+  @spec scoped(term, atom, term, keyword) :: term
   def scoped(user, action, scope, opts \\ []) do
     module = opts[:policy] || policy_module(scope)
 
@@ -111,6 +115,7 @@ defmodule Bodyguard do
   Available options:
   * `policy` (atom) - override the policy determined from the term
   """
+  @spec permitted_attributes(term, term, keyword) :: [atom]
   def permitted_attributes(user, term, opts \\ []) do
     module = opts[:policy] || policy_module(term)
     apply(module, :permitted_attributes, [user, term])
