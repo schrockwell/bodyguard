@@ -10,8 +10,6 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 * [GitHub](https://github.com/schrockwell/bodyguard)
 * [Docs](https://hexdocs.pm/bodyguard/)
 
-**This readme is on the `master` branch** and might be newer than what's published to Hex. [The latest release is here.](https://github.com/schrockwell/bodyguard/tree/v0.5.0)
-
 ## Installation
 
   1. Add `bodyguard` to your list of dependencies in `mix.exs`:
