@@ -185,11 +185,25 @@ defmodule Bodyguard.Controller do
   with the `:current_user` configuration option:
 
       config :bodyguard, current_user: :my_custom_assign_key
+
+  Current user may also be retrieved via function using a module-function tuple:
+
+      config :bodyguard, current_user: {Guardian.Plug, :current_resource}
   """
   @spec get_current_user(Plug.Conn.t) :: Plug.Conn.t
   def get_current_user(conn) do
     key = Application.get_env(:bodyguard, :current_user, :current_user)
+    get_current_user(conn, key)
+  end
+
+  # Private
+
+  defp get_current_user(conn, key) when is_atom(key) do
     conn.assigns[key]
+  end
+
+  defp get_current_user(conn, {mod, fun}) do
+    apply(mod, fun, [conn])
   end
 
   @doc """
