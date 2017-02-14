@@ -162,4 +162,25 @@ defmodule Policy.HelpersTest do
     assert Bodyguard.Controller.authorize(conn, struct) == {:error, :because_i_said_so}
     assert Bodyguard.Controller.authorize(conn, struct, policy: MockStruct.Policy)
   end
+
+  test "current user from keyword", %{conn: conn} do
+    Application.put_env(:bodyguard, :current_user, :bodyguard_test_user)
+
+    user = %{name: "test-user"}
+    conn = Plug.Conn.assign(conn, :bodyguard_test_user, user)
+    assert Bodyguard.Controller.get_current_user(conn) == user
+  end
+
+  test "current user using a function", %{conn: conn} do
+    defmodule TestLoader do
+      def current_resource(conn) do
+        conn.private[:bodyguard_test_user]
+      end
+    end
+    Application.put_env(:bodyguard, :current_user, {TestLoader, :current_resource})
+
+    user = %{name: "test-user"}
+    conn = Plug.Conn.put_private(conn, :bodyguard_test_user, user)
+    assert Bodyguard.Controller.get_current_user(conn) == user
+  end
 end
