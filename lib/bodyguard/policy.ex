@@ -1,33 +1,35 @@
 defmodule Bodyguard.Policy do
   @moduledoc """
-  Behaviour to authorize actions on a particular resource.
+  Behaviour to authorize actions within a context.
 
-  Implement this behaviour for each schema that will be authorized.
-
-  Bodyguard expects this this module to be defined at `MySchema.Policy` unless
-  specified otherwise.
+  Implement this behaviour for each context that will be authorized. 
+  The module naming convention is `MyApp.MyContext.Policy`.
   """
 
   @doc """
-  Authorize a user's ability to perform an action on a particular resource.
+  Authorize a user's action.
 
-  To authorize an action, return `true` or `:ok`.
+  The `action` is whatever user-specified contextual action is being authorized.
+  It bears no intrinsic mapping to a controller "action".
+
+  To permit an action, return `true` or `:ok`.
 
   To deny authorization, return `false`, `:error`, or `{:error, reason}`.
   """
-  @callback can?(user :: term, action :: atom, schema :: term) :: boolean | :ok
-      | :error | {:error, reason :: term}
+  @callback authorize(user :: any, action :: atom, params :: map) :: boolean | :ok
+      | :error | {:error, reason :: atom}
 
   @doc """
-  Specify which resources a user can access.
+  Limit which resources a user can access.
 
-  The result should be a subset of the `scope` argument.
+  The `resource` is the module of the particular struct/schema/model that is being scoped.
+
+  The `scope` argument is a broad specification of what to narrow down. 
+  Typically it is an Ecto queryable, although it can also be a list of structs
+  or any other custom data.
+
+  The result should be a limited subset of the passed-in `scope`, or the `scope` itself
+  if no limitations are required.
   """
-  @callback scope(user :: term, action :: atom, scope :: term) :: term
-
-  @doc """
-  Specify which schema attributes a user can modify.
-  """
-  @callback permitted_attributes(user :: term, schema :: term) :: [atom]
-
+  @callback limit(user :: term, resource :: module, scope :: any, params :: map) :: term
 end

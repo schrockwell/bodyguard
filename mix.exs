@@ -4,13 +4,20 @@ defmodule Bodyguard.Mixfile do
   def project do
     [
       app: :bodyguard,
-      version: "1.0.0",
+      version: "2.0.0-dev",
       elixir: "~> 1.3",
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
       deps: deps(),
       description: description(),
-      package: package()
+      package: package(),
+
+      # Docs
+      name: "Bodyguard",
+      docs: [
+        extras: ["README.md"],
+        main: "readme"
+      ]
     ]
   end
 

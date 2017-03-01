@@ -1,4 +1,6 @@
-# Bodyguard – Simple, Flexibile Authorization
+# Bodyguard
+
+### Simple, Flexibile Authorization
 
 Bodyguard (previously named Authy) is an authorization library that imposes a simple module naming convention to express authorization.
 

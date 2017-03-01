@@ -1,123 +1,188 @@
 defmodule Bodyguard do
   @moduledoc """
-  Bodyguard imposes a simple module naming convention to express authorization
-  policies.
+  Protect your stuff!
 
-  For easy integration with Plug-based web applications (e.g. Phoenix), check
-  out `Bodyguard.Controller`.
-  """
+  ## Configuration
 
-  require Logger
+  When authorizing a `Plug.Conn` or `Phoenix.Socket` (or anything else with an
+  `assigns` map), Bodyguard's default behavior is to use
+  `assigns[:current_user]` as the current user. This behavior can be customized
+  using the `:resolve_user` configuration option.
 
-  @doc """
-  Given a data structure, determines the policy module to call for authorization
-  checks, following the Bodyguard convention.
+  Keep in mind that the single `actor` argument passed to the callback might
+  already be the user model itself.
+      
+      # config/config.exs
+      config Bodyguard, :resolve_user, {MyApp.Authorization, :get_current_user}
 
-  Returns an atom of the policy module if passed a struct or atom, by appending
-  ".Policy" to the module name
-
-      policy_module(MyApp.User)         # => MyApp.User.Policy
-      policy_module(%MyApp.User{})      # => MyApp.User.Policy
-
-  Returns `:error` otherwise.
-
-      policy_module("Derp") # => :error
-
-  """
-
-  @spec policy_module(term) :: module | :error
-
-  # Unable to determine for nil
-  def policy_module(nil), do: :error
-
-  # For Ecto queries
-  def policy_module(%{from: {source, schema}})
-    when is_binary(source) and is_atom(schema), do: policy_module(schema)
-
-  # For structs
-  def policy_module(%{__struct__: s}), do: policy_module(s)
-
-  # For schemas
-  def policy_module(term) when is_atom(term), do: String.to_atom("#{term}.Policy")
-
-  # Unable to determine
-  def policy_module(_), do: :error
-
-  @doc """
-  Returns a value determining if the user's action is authorized via the appropriate
-  policy module for that resource.
-
-  The result is returned directly from the `can?/3` callback.
-
-  `policy_module/1` is used to find the module, then calls `can?(user, action, term)` on it.
-
-      user = %MyApp.User{}
-      post = %MyApp.Post{}
-      Bodyguard.authorized?(user, :show, post)
-      Bodyguard.authorized?(user, :index, MyApp.Post)
-  
-  Available options:
-  * `policy` (atom) - override the policy determined from the term
-  """
-  @spec authorized?(term, atom, term, keyword) :: boolean | :ok | :error | {:error, atom}
-  def authorized?(user, action, term, opts \\ []) do
-    module = opts[:policy] || policy_module(term)
-    apply(module, :can?, [user, action, term])
-  end
-
-  @doc """
-  Scope resources based on the current user.
-
-  See also: `Bodyguard.Controller.scope/3`
-
-  Define a `scope(user, action, scope)` callback on the policy module to return
-  the appropriate scope for that user.
-
-  If the `scope` argument is a struct, module name, or an Ecto query, the schema
-  can be automatically inferred. Otherwise, you must pass the `policy` option to
-  explicitly determine the policy.
-
-  This example scopes an Ecto query of posts a user can see.
-
-      # post_policy.ex
-      defmodule MyApp.Post.Policy
-        # A user can only see their own posts, but an admin can see all posts
-        def scope(%{role: "user", id: user_id}, _action, scope) do 
-          scope |> where(user_id: user_id)
+      # lib/my_app/authorization.ex
+      defmodule MyApp.Authorization do
+        def get_current_user(%Plug.Conn{} = conn) do
+          # return a user
         end
-
-        def scope(%{role: "admin"}, _action, scope), do: scope
+        def get_current_user(%MyApp.User{} = user), do: user
       end
-
-      # elsewhere
-      posts = Bodyguard.scoped(current_user, :index, MyApp.Post) |> Repo.all
   """
-  @spec scoped(term, atom, term, keyword) :: term
-  def scoped(user, action, scope, opts \\ []) do
-    module = opts[:policy] || policy_module(scope)
 
-    # TODO v1.0: Remove deprecation warning
-    if Keyword.keyword?(opts) && Keyword.keys(opts) != [] && Keyword.keys(opts) != [:policy] do
-      Logger.warn("Passing opts to the #{module}.scope/3 callback is deprecated. The new callback function signature is #{module}.scope(user, action, scope). Use the scope argument instead.")
-    end
+  @type user :: any
+  @type actor :: Plug.Conn.t | user
 
-    apply(module, :scope, [user, action, scope])
+  @doc """
+  Authorize the user's actions.
+
+  Returns `:ok` on authorization success, or `{:error, reason}` on failure.
+
+  See `Bodyguard.Policy.authorize/3` for details on how to define the callback
+  functions in the policy.
+
+  Out of the box, the `actor` can be a user itself, or a struct with `assigns`
+  (such as a `Plug.Conn` or a `Phoenix.Socket`), in which case
+  `assigns[:current_user]` is used. For more advanced mappings, see the
+  `:resolve_user` configuration option.
+
+  The `context` is a module whose functions are being authorized. By convention,
+  the policy for this context is named `[context].Policy`.
+
+  ## Options
+
+  * `policy` - specify an explicit policy
+
+  All remaining options are converted into a `params` map and passed to the
+  `Bodyguard.Policy.authorize/3` callback.
+  """
+
+  @spec guard(actor :: actor, context :: module, action :: atom, opts :: keyword)
+    :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
+
+  def guard(actor, context, action, opts \\ [])
+  def guard(%Plug.Conn{} = conn, context, action, opts) do
+    guard(conn, context, action, merge_options(conn, opts))
+  end
+  def guard(actor, context, action, opts) do
+    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
+    params = Enum.into(%{}, opts)
+
+    policy
+    |> apply(:guard, [resolve_user(actor), action, params])
+    |> normalize_result
   end
 
   @doc """
-  Specify which schema attributes may be updated by the current user.
+  The same as `guard/4`, but raises `Bodyguard.NotAuthorizedError` on
+  authorization failure.
 
-  The policy module must define a function `permitted_attributes(user, term)`
-  which returns a list of atoms corresponding to the fields that may 
-  be updated. This resulting list is often passed to `Ecto.Changeset.cast/3` 
-  to whitelist the parameters being passed in to the changeset.
-
-  Available options:
-  * `policy` (atom) - override the policy determined from the term
+  Returns `:ok` on success.
   """
-  @spec permitted_attributes(term, term, keyword) :: [atom]
-  def permitted_attributes(user, term, opts \\ []) do
-    module = opts[:policy] || policy_module(term)
-    apply(module, :permitted_attributes, [user, term])
+
+  @spec guard!(actor :: actor, context :: module, action :: atom, opts :: keyword)
+    :: :ok
+
+  def guard!(actor, context, action, opts \\ [])
+  def guard!(%Plug.Conn{} = conn, context, action, opts) do
+    guard!(conn, context, action, merge_options(conn, opts))
   end
+  def guard!(actor, context, action, opts) do
+    {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
+    {error_status, opts} = Keyword.pop(opts, :error_status, 403)
+
+    case guard(actor, context, action, opts) do
+      :ok -> :ok
+      {:error, reason} -> raise Bodyguard.NotAuthorizedError, 
+        message: error_message, status: error_status, reason: reason
+    end
+  end
+
+  @doc """
+  The same as `guard/4`, but returns a boolean.
+  """
+  @spec can?(actor :: actor, context :: module, action :: atom, opts :: keyword)
+    :: boolean
+
+  def can?(actor, context, action, opts \\ []) do
+    case guard(actor, context, action, opts) do
+      :ok -> true
+      _ -> false
+    end
+  end
+
+
+  @doc """
+  Limit the user's accessible resources.
+
+  Returns a subset of the `scope` based on the user's access.
+
+  See `Bodyguard.Policy.limit/4` for details on how to define the callback
+  functions in the policy.
+
+  Bodyguard will attempt to infer the type of the data embodied by the `scope`:
+
+  * If `scope` is a module, that module will be the `resource`.
+  * If `scope` is an `Ecto.Query`, the schema module will be the `resource`.
+  * If `scope` is a struct, the struct module will be the `resource`.
+  * If `scope` is a list, the first item in the list will be the `resource` 
+  using the above rules.
+  * Otherwise, the `resource` option must be supplied.
+
+  ## Options
+
+  * `policy` - overrides the default policy convention of `context.Policy`
+  * `resource` - if the resource type cannot be inferred from the `scope`
+    argument, then you can specify it here
+
+  All remaining options are converted into a `params` map and passed to the
+  `Bodyguard.Policy.scope/4` callback.
+  """
+
+  @spec limit(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
+
+  def limit(actor, context, scope, opts \\ []) do
+    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
+    {resource, opts} = Keyword.pop(opts, :resource, resolve_resource(context))
+
+    params = Enum.into(%{}, opts)
+
+    apply(policy, :limit, [resolve_user(actor), resource, scope, params])
+  end
+
+  @doc false
+  def get_current_user(%{assigns: assigns}) when is_map(assigns) do
+    assigns[:current_user]
+  end
+  def get_current_user(user), do: user
+
+  # Private
+
+  defp normalize_result(success) when success in [true, :ok], do: :ok
+  defp normalize_result(failure) when failure in [false, :error], do: {:error, :unauthorized}
+  defp normalize_result({:error, reason}), do: {:error, reason}
+  defp normalize_result(result) do
+    raise "Unexpected result from authorization function: #{inspect(result)}"
+  end
+
+  defp resolve_resource(resource) when is_atom(resource), do: resource
+  defp resolve_resource(list) when is_list(list) do
+    list |> List.first |> resolve_resource
+  end
+  defp resolve_resource(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
+  defp resolve_resource(%{__struct__: struct}), do: struct
+  defp resolve_resource(scope) do
+    raise "Unable to determine resource type given scope #{inspect(scope)}"
+  end
+
+  defp resolve_policy(context) when is_atom(context) do
+    String.to_atom("#{context}.Policy")
+  end
+  defp resolve_policy(context) do
+    raise "Expected a context module, got #{inspect(context)}"
+  end
+
+  defp resolve_user(actor) do
+    {module, function} = Application.get_env(:bodyguard, :resolve_user, {__MODULE__, :get_current_user})
+    apply(module, function, [actor])
+  end
+
+  defp merge_options(%Plug.Conn{private: %{bodyguard_options: conn_options}}, opts) do
+    Keyword.merge(conn_options, opts)
+  end
+  defp merge_options(_, opts), do: opts
 end
