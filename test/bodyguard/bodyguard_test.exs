@@ -77,14 +77,12 @@ defmodule BodyguardTest do
   end
 
   test "overriding the error defaults" do
-    try do
+    exception = assert_raise Bodyguard.NotAuthorizedError, fn ->
       Bodyguard.guard!(%User{auth_result: :error}, Context, :access, error_message: "whoops", error_status: 404)
-      flunk "No error raised"
-    rescue
-      exception in Bodyguard.NotAuthorizedError ->
-        assert exception.message == "whoops"
-        assert exception.status == 404
     end
+
+    assert exception.message == "whoops"
+    assert exception.status == 404
   end
 
   test "basic scope limiting" do
@@ -96,7 +94,7 @@ defmodule BodyguardTest do
     assert Bodyguard.limit(%User{auth_scope: :limited}, Context, [%Resource{}]) == :limited
     # TODO: Check Ecto.Query
     assert_raise ArgumentError, fn ->
-      Bodyguard.limit(%User{auth_scope: :limited}, Context, {})
+      Bodyguard.limit(%User{auth_scope: :limited}, Context, %{}) # Can't determine type of %{}
     end
 
   end

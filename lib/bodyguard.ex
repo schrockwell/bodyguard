@@ -133,7 +133,7 @@ defmodule Bodyguard do
 
   def limit(actor, context, scope, opts \\ []) do
     {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
-    {resource, opts} = Keyword.pop(opts, :resource, resolve_resource(scope))
+    {resource, opts} = Keyword.pop(opts, :resource, infer_resource(scope))
 
     params = Enum.into(opts, %{})
 
@@ -161,14 +161,14 @@ defmodule Bodyguard do
     raise ArgumentError, "Unexpected result from authorization function: #{inspect(result)}"
   end
 
-  defp resolve_resource(resource) when is_atom(resource), do: resource
-  defp resolve_resource(list) when is_list(list) do
-    list |> List.first |> resolve_resource
+  defp infer_resource(resource) when is_atom(resource), do: resource
+  defp infer_resource(list) when is_list(list) do
+    list |> List.first |> infer_resource
   end
-  defp resolve_resource(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
-  defp resolve_resource(%{__struct__: struct}), do: struct
-  defp resolve_resource(scope) do
-    raise ArgumentError, "Unable to determine resource type given scope #{inspect(scope)}"
+  defp infer_resource(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
+  defp infer_resource(%{__struct__: struct}), do: struct
+  defp infer_resource(scope) do
+    raise ArgumentError, "Unable to infer resource type given scope #{inspect(scope)}"
   end
 
   defp resolve_policy(context) when is_atom(context) do
