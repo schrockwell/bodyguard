@@ -41,7 +41,7 @@ defmodule BodyguardTest do
   end
 
   defmodule FallbackController do
-    def call(conn, {:error, _reason}), do: conn
+    def call(_conn, {:error, _reason}), do: :fallback_result
   end
 
   test "basic authorization" do
@@ -146,6 +146,6 @@ defmodule BodyguardTest do
     # Failure (fallback recovery)
     plug_opts = Bodyguard.Plug.Guard.init(context: Context, action: :access, 
       policy: Context.OtherPolicy, fallback: FallbackController)
-    assert %Plug.Conn{} = Bodyguard.Plug.Guard.call(conn, plug_opts)
+    assert Bodyguard.Plug.Guard.call(conn, plug_opts) == :fallback_result
   end
 end
