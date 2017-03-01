@@ -32,7 +32,7 @@ defmodule Bodyguard do
 
   Returns `:ok` on authorization success, or `{:error, reason}` on failure.
 
-  See `Bodyguard.Policy.authorize/3` for details on how to define the callback
+  See `Bodyguard.Policy.guard/3` for details on how to define the callback
   functions in the policy.
 
   Out of the box, the `actor` can be a user itself, or a struct with `assigns`
@@ -48,19 +48,17 @@ defmodule Bodyguard do
   * `policy` - specify an explicit policy
 
   All remaining options are converted into a `params` map and passed to the
-  `Bodyguard.Policy.authorize/3` callback.
+  `Bodyguard.Policy.guard/3` callback.
   """
 
   @spec guard(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
 
-  def guard(actor, context, action, opts \\ [])
-  def guard(%Plug.Conn{} = conn, context, action, opts) do
-    guard(conn, context, action, merge_options(conn, opts))
-  end
-  def guard(actor, context, action, opts) do
+  def guard(actor, context, action, opts \\ []) do
+    opts = merge_options(actor, opts)
+
     {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
-    params = Enum.into(%{}, opts)
+    params = Enum.into(opts, %{})
 
     policy
     |> apply(:guard, [resolve_user(actor), action, params])
@@ -77,11 +75,9 @@ defmodule Bodyguard do
   @spec guard!(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
-  def guard!(actor, context, action, opts \\ [])
-  def guard!(%Plug.Conn{} = conn, context, action, opts) do
-    guard!(conn, context, action, merge_options(conn, opts))
-  end
-  def guard!(actor, context, action, opts) do
+  def guard!(actor, context, action, opts \\ []) do
+    opts = merge_options(actor, opts)
+
     {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Keyword.pop(opts, :error_status, 403)
 
@@ -137,11 +133,17 @@ defmodule Bodyguard do
 
   def limit(actor, context, scope, opts \\ []) do
     {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
-    {resource, opts} = Keyword.pop(opts, :resource, resolve_resource(context))
+    {resource, opts} = Keyword.pop(opts, :resource, resolve_resource(scope))
 
-    params = Enum.into(%{}, opts)
+    params = Enum.into(opts, %{})
 
     apply(policy, :limit, [resolve_user(actor), resource, scope, params])
+  end
+
+  @doc false
+  def resolve_user(actor) do
+    {module, function} = Application.get_env(:bodyguard, :resolve_user, {__MODULE__, :get_current_user})
+    apply(module, function, [actor])
   end
 
   @doc false
@@ -156,7 +158,7 @@ defmodule Bodyguard do
   defp normalize_result(failure) when failure in [false, :error], do: {:error, :unauthorized}
   defp normalize_result({:error, reason}), do: {:error, reason}
   defp normalize_result(result) do
-    raise "Unexpected result from authorization function: #{inspect(result)}"
+    raise ArgumentError, "Unexpected result from authorization function: #{inspect(result)}"
   end
 
   defp resolve_resource(resource) when is_atom(resource), do: resource
@@ -166,19 +168,14 @@ defmodule Bodyguard do
   defp resolve_resource(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
   defp resolve_resource(%{__struct__: struct}), do: struct
   defp resolve_resource(scope) do
-    raise "Unable to determine resource type given scope #{inspect(scope)}"
+    raise ArgumentError, "Unable to determine resource type given scope #{inspect(scope)}"
   end
 
   defp resolve_policy(context) when is_atom(context) do
     String.to_atom("#{context}.Policy")
   end
   defp resolve_policy(context) do
-    raise "Expected a context module, got #{inspect(context)}"
-  end
-
-  defp resolve_user(actor) do
-    {module, function} = Application.get_env(:bodyguard, :resolve_user, {__MODULE__, :get_current_user})
-    apply(module, function, [actor])
+    raise ArgumentError, "Expected a context module, got #{inspect(context)}"
   end
 
   defp merge_options(%Plug.Conn{private: %{bodyguard_options: conn_options}}, opts) do

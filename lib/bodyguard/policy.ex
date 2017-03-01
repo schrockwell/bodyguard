@@ -16,7 +16,7 @@ defmodule Bodyguard.Policy do
 
   To deny authorization, return `false`, `:error`, or `{:error, reason}`.
   """
-  @callback authorize(user :: any, action :: atom, params :: map) :: boolean | :ok
+  @callback guard(user :: any, action :: atom, params :: map) :: boolean | :ok
       | :error | {:error, reason :: atom}
 
   @doc """

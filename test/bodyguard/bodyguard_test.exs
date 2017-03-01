@@ -1,181 +1,153 @@
 defmodule BodyguardTest do
-  import Bodyguard
-  alias BodyguardTest.Post
-  alias BodyguardTest.User
+  alias BodyguardTest.{Context, User, Resource}
 
   use ExUnit.Case, async: true
   doctest Bodyguard
 
   defmodule User do
-    defstruct [id: nil, role: :guest]
+    defstruct [auth_result: :ok, auth_scope: :new_scope]
   end
 
-  defmodule Post do
-    defstruct [user_id: nil]
+  defmodule Resource do
+    defstruct []
+  end
 
+  defmodule Context do
     defmodule Policy do
-      def can?(%User{role: :admin}, _action, _post), do: true
-      def can?(_user, :index, _post), do: true
-      def can?(nil, _action, _post), do: false
-      def can?(%User{id: id}, :edit, %Post{user_id: user_id}) when user_id == id, do: true
-      def can?(_user, :show, _post), do: true
-      def can?(_, _, _), do: false
+      def guard(%User{auth_result: result}, _action, _params), do: result
 
-      def scope(_user, :index, scope), do: scope
-      def scope(user, _action, _scope) do
-        case user do
-          %{role: :admin}
-            -> :admin_posts_scope
-          _
-            -> :guest_posts_scope
+      def limit(%User{auth_scope: nil}, Resource, scope, _params), do: scope
+      def limit(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
+    end
+
+    defmodule OtherPolicy do
+      def guard(_user, _action, _params), do: {:error, :other_result}
+
+      def limit(_user, Resource, _scope, _params), do: :other_scope
+    end
+  end
+
+  defmodule ResourceController do
+    def action(conn, _params) do
+      with :ok <- Bodyguard.guard(conn, Context, :access) do
+        conn
+      end
+    end
+
+    def action!(conn, _params) do
+      Bodyguard.guard!(conn, Context, :access)
+      conn
+    end
+  end
+
+  defmodule FallbackController do
+    def call(conn, {:error, _reason}), do: conn
+  end
+
+  test "basic authorization" do
+    mappings = [
+      {:ok, :ok, true}, 
+      {true, :ok, true}, 
+      {:error, {:error, :unauthorized}, false},
+      {false, {:error, :unauthorized}, false}, 
+      {{:error, :not_found}, {:error, :not_found}, false}
+    ]
+
+    for {result, normalized, boolean} <- mappings do
+      # Standard auth
+      assert Bodyguard.guard(%User{auth_result: result}, Context, :access) == normalized
+
+      # Boolean auth
+      assert Bodyguard.can?(%User{auth_result: result}, Context, :access) == boolean
+
+      # Error auth
+      if boolean do
+        assert Bodyguard.guard!(%User{auth_result: result}, Context, :access) == :ok
+      else
+        assert_raise Bodyguard.NotAuthorizedError, fn ->
+          Bodyguard.guard!(%User{auth_result: result}, Context, :access)
         end
       end
-
-      def permitted_attributes(%User{role: :admin}, _post), do: [:one, :two, :three]
-      def permitted_attributes(%User{id: id}, %Post{user_id: user_id}) when user_id == id, do: [:one]
-      def permitted_attributes(_user, _post), do: []
     end
   end
 
-  defmodule PostController do
-    import Bodyguard.Controller
+  test "overriding the default policy" do
+    assert Bodyguard.guard(%User{}, Context, :access, policy: Context.OtherPolicy) == {:error, :other_result}
+    assert Bodyguard.limit(%User{}, Context, Resource, policy: Context.OtherPolicy) == :other_scope
+  end
 
-    def index(conn, _params) do
-      with {:ok, conn} <- authorize(conn, Post) do
-        scope(conn, Post)
-      end
-    end
-
-    def edit(conn, %{post: post}) do
-      with {:ok, conn} <- authorize(conn, post) do
-        scope(conn, post)
-      end
-    end
-
-    def show(conn, %{post: post}) do
-      with {:ok, conn} <- authorize(conn, post) do
-        scope(conn, post)
-      end
-    end
-
-    def delete(conn, %{post: post}) do
-      with {:ok, conn} <- authorize(conn, post) do
-        scope(conn, post)
-      end
+  test "overriding the error defaults" do
+    try do
+      Bodyguard.guard!(%User{auth_result: :error}, Context, :access, error_message: "whoops", error_status: 404)
+      flunk "No error raised"
+    rescue
+      exception in Bodyguard.NotAuthorizedError ->
+        assert exception.message == "whoops"
+        assert exception.status == 404
     end
   end
 
-  test "determining policy modules" do
-    assert policy_module(User)        == User.Policy
-    assert policy_module(%User{})     == User.Policy
-    assert policy_module(nil)         == :error
-    assert policy_module("fail")      == :error
+  test "basic scope limiting" do
+    assert Bodyguard.limit(%User{auth_scope: nil}, Context, Resource) == Resource
+
+    # Test type resolution
+    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, Resource) == :limited
+    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, %Resource{}) == :limited
+    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, [%Resource{}]) == :limited
+    # TODO: Check Ecto.Query
+    assert_raise ArgumentError, fn ->
+      Bodyguard.limit(%User{auth_scope: :limited}, Context, {})
+    end
+
   end
 
-  test "policy scopes" do
-    guest = %User{role: :guest}
-    admin = %User{role: :admin}
-    scope = %{from: {"posts", Post}} # Fake the structure of an Ecto query
+  test "current user using a function" do
+    defmodule TestLoader do
+      def current_resource(_actor), do: %User{auth_result: {:error, :custom_user}}
+    end
 
-    assert scoped(nil, :edit, Post) == :guest_posts_scope
-    assert scoped(nil, :index, Post) == Post
-    assert scoped(nil, :index, scope) == scope
-    assert scoped(guest, :edit, Post) == :guest_posts_scope
-    assert scoped(admin, :edit, Post) == :admin_posts_scope
+    # Set config
+    Application.put_env(:bodyguard, :resolve_user, {TestLoader, :current_resource})
+
+    # Use custom loader
+    assert Bodyguard.resolve_user(:actor) == %User{auth_result: {:error, :custom_user}}
+    assert Bodyguard.guard(:actor, Context, :access) == {:error, :custom_user}
+
+    # Reset config
+    Application.delete_env(:bodyguard, :resolve_user)
   end
 
-  test "the example policies" do
-    guest = %User{id: 1, role: :guest}
-    admin = %User{id: 2, role: :admin}
-    post = %Post{user_id: 1}
+  test "setting default options via a plug" do
+    conn = Plug.Test.conn(:get, "/")
 
-    assert authorized?(guest, :edit, post)
-    assert authorized?(guest, :show, post)
-    refute authorized?(guest, :delete, post)
+    # Set options
+    plug_opts = Bodyguard.Plug.PutOptions.init(policy: Context.OtherPolicy)
+    conn = Bodyguard.Plug.PutOptions.call(conn, plug_opts)
 
-    assert authorized?(admin, :edit, post)
-    assert authorized?(admin, :show, post)
-    assert authorized?(admin, :delete, post)
+    # Use them in controller actions
+    assert ResourceController.action(conn, %{}) == {:error, :other_result}
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      ResourceController.action!(conn, %{})
+    end
   end
 
-  test "permitted attributes" do
-    owner = %User{id: 1, role: :guest}
-    admin = %User{id: 2, role: :admin}
-    guest = %User{}
-    post = %Post{user_id: 1}
+  test "authorizing via a plug" do
+    conn = Plug.Test.conn(:get, "/") |> Plug.Conn.assign(:current_user, %User{})
+    
+    # Success
+    plug_opts = Bodyguard.Plug.Guard.init(context: Context, action: :access)
+    assert %Plug.Conn{} = Bodyguard.Plug.Guard.call(conn, plug_opts)
 
-    assert permitted_attributes(admin, post) == [:one, :two, :three]
-    assert permitted_attributes(owner, post) == [:one]
-    assert permitted_attributes(guest, post) == []
-  end
+    # Failure (raise)
+    plug_opts = Bodyguard.Plug.Guard.init(context: Context, action: :access,
+      policy: Context.OtherPolicy)
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      Bodyguard.Plug.Guard.call(conn, plug_opts)
+    end
 
-  test "controller integration" do
-    guest = %User{id: 1, role: :guest}
-    admin = %User{id: 2, role: :admin}
-    other = %User{id: 3, role: :guest}
-    post = %Post{user_id: 1}
-    params = %{post: post}
-
-    # Test index action - everyone is authorized! So just test the scope
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == Post
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == Post
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :index}}
-    assert PostController.index(conn, params) == Post
-
-    # Test edit action
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == :guest_posts_scope
-
-    conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :edit}}
-    assert PostController.edit(conn, params) == :admin_posts_scope
-
-    # Test show action
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, params) == :guest_posts_scope
-
-    conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, params) == :guest_posts_scope
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, params) == :admin_posts_scope
-
-    # Test showing a nil post (not found)
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :show}}
-    assert PostController.show(conn, %{post: nil}) == {:error, :unauthorized}
-
-    # Test delete action
-    conn = %Plug.Conn{assigns: %{current_user: nil}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: guest}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: other}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == {:error, :unauthorized}
-
-    conn = %Plug.Conn{assigns: %{current_user: admin}, private: %{phoenix_action: :delete}}
-    assert PostController.delete(conn, params) == :admin_posts_scope
+    # Failure (fallback recovery)
+    plug_opts = Bodyguard.Plug.Guard.init(context: Context, action: :access, 
+      policy: Context.OtherPolicy, fallback: FallbackController)
+    assert %Plug.Conn{} = Bodyguard.Plug.Guard.call(conn, plug_opts)
   end
 end
