@@ -152,8 +152,13 @@ defmodule Bodyguard do
   end
   def get_current_user(user), do: user
 
-  # Private
+  #
+  # PRIVATE
+  #
 
+  #
+  # Convert the result of a Bodyguard.Policy.guard/3 callback into known values
+  #
   defp normalize_result(success) when success in [true, :ok], do: :ok
   defp normalize_result(failure) when failure in [false, :error], do: {:error, :unauthorized}
   defp normalize_result({:error, reason}), do: {:error, reason}
@@ -161,6 +166,9 @@ defmodule Bodyguard do
     raise ArgumentError, "Unexpected result from authorization function: #{inspect(result)}"
   end
 
+  #
+  # Attempt to discover the type of a scope
+  #
   defp infer_resource(resource) when is_atom(resource), do: resource
   defp infer_resource(list) when is_list(list) do
     list |> List.first |> infer_resource
@@ -171,6 +179,9 @@ defmodule Bodyguard do
     raise ArgumentError, "Unable to infer resource type given scope #{inspect(scope)}"
   end
 
+  #
+  # Determine the context's policy
+  #
   defp resolve_policy(context) when is_atom(context) do
     String.to_atom("#{context}.Policy")
   end
@@ -178,6 +189,9 @@ defmodule Bodyguard do
     raise ArgumentError, "Expected a context module, got #{inspect(context)}"
   end
 
+  #
+  # Merge in default options specified on the Plug.Conn
+  #
   defp merge_options(%Plug.Conn{private: %{bodyguard_options: conn_options}}, opts) do
     Keyword.merge(conn_options, opts)
   end
