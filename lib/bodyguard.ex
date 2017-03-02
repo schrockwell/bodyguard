@@ -54,7 +54,7 @@ defmodule Bodyguard do
   @spec guard(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
 
-  def guard(actor, policy, action, opts \\ []) do
+  def guard(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
     params = Enum.into(opts, %{})
 
@@ -73,13 +73,13 @@ defmodule Bodyguard do
   @spec guard!(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
-  def guard!(actor, policy, action, opts \\ []) do
+  def guard!(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
 
     {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Keyword.pop(opts, :error_status, 403)
 
-    case guard(actor, policy, action, opts) do
+    case guard(policy, actor, action, opts) do
       :ok -> :ok
       {:error, reason} -> raise Bodyguard.NotAuthorizedError, 
         message: error_message, status: error_status, reason: reason
@@ -92,8 +92,8 @@ defmodule Bodyguard do
   @spec can?(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: boolean
 
-  def can?(actor, policy, action, opts \\ []) do
-    case guard(actor, policy, action, opts) do
+  def can?(policy, actor, action, opts \\ []) do
+    case guard(policy, actor, action, opts) do
       :ok -> true
       _ -> false
     end
@@ -129,7 +129,7 @@ defmodule Bodyguard do
 
   @spec scope(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
 
-  def scope(actor, policy, scope, opts \\ []) do
+  def scope(policy, actor, scope, opts \\ []) do
     opts = merge_options(actor, opts)
 
     {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
@@ -174,14 +174,6 @@ defmodule Bodyguard do
   defp infer_resource!(%{__struct__: struct}), do: struct
   defp infer_resource!(scope) do
     raise ArgumentError, "Unable to infer resource type given scope #{inspect(scope)}"
-  end
-
-  #
-  # Determine the context's policy
-  #
-  defp validate_policy!(policy) when is_atom(policy), do: policy
-  defp validate_policy!(policy) do
-    raise ArgumentError, "Expected a policy module, got #{inspect(policy)}"
   end
 
   #
