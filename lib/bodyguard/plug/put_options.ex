@@ -1,4 +1,6 @@
 defmodule Bodyguard.Plug.PutOptions do
+  @behaviour Plug
+  
   @moduledoc """
   Stores default authorization options.
 

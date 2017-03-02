@@ -1,4 +1,6 @@
-defmodule Bodyguard.Plug.Guard do
+defmodule Bodyguard.Plug.Authorize do
+  @behaviour Plug
+  
   @moduledoc """
   Performs authorization checks in a Plug pipeline.
 
@@ -36,13 +38,12 @@ defmodule Bodyguard.Plug.Guard do
 
   @doc false
   def call(conn, {policy, action, opts, nil}) do
-    Bodyguard.authorize!(policy, conn, action, opts)
-    conn
+    Bodyguard.Conn.authorize!(conn, policy, action, opts)
   end
   def call(conn, {policy, action, opts, fallback}) do
-    case Bodyguard.authorize(policy, conn, action, opts) do
-      :ok -> conn
-      result -> fallback.call(conn, result)
+    case Bodyguard.Conn.authorize(conn, policy, action, opts) do
+      {:ok, conn} -> conn
+      error -> fallback.call(conn, error)
     end
   end
 end

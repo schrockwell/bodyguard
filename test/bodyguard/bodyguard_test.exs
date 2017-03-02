@@ -134,18 +134,18 @@ defmodule BodyguardTest do
     conn = Plug.Test.conn(:get, "/") |> Plug.Conn.assign(:current_user, %User{})
     
     # Success
-    plug_opts = Bodyguard.Plug.Guard.init(policy: Context.Policy, action: :access)
-    assert %Plug.Conn{} = Bodyguard.Plug.Guard.call(conn, plug_opts)
+    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.Policy, action: :access)
+    assert %Plug.Conn{} = Bodyguard.Plug.Authorize.call(conn, plug_opts)
 
     # Failure (raise)
-    plug_opts = Bodyguard.Plug.Guard.init(policy: Context.OtherPolicy, action: :access)
+    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.OtherPolicy, action: :access)
     assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.Plug.Guard.call(conn, plug_opts)
+      Bodyguard.Plug.Authorize.call(conn, plug_opts)
     end
 
     # Failure (fallback recovery)
-    plug_opts = Bodyguard.Plug.Guard.init(policy: Context.OtherPolicy, action: :access, 
+    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.OtherPolicy, action: :access, 
       fallback: FallbackController)
-    assert Bodyguard.Plug.Guard.call(conn, plug_opts) == :fallback_result
+    assert Bodyguard.Plug.Authorize.call(conn, plug_opts) == :fallback_result
   end
 end

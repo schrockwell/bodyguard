@@ -2,26 +2,9 @@ defmodule Bodyguard do
   @moduledoc """
   Protect your stuff!
 
-  ## Configuration
+  ## Configuration Options
 
-  When authorizing a `Plug.Conn` or `Phoenix.Socket` (or anything else with an
-  `assigns` map), Bodyguard's default behavior is to use
-  `assigns[:current_user]` as the current user. This behavior can be customized
-  using the `:resolve_user` configuration option.
-
-  Keep in mind that the single `actor` argument passed to the callback might
-  already be the user model itself.
-      
-      # config/config.exs
-      config Bodyguard, :resolve_user, {MyApp.Authorization, :get_current_user}
-
-      # lib/my_app/authorization.ex
-      defmodule MyApp.Authorization do
-        def get_current_user(%Plug.Conn{} = conn) do
-          # return a user
-        end
-        def get_current_user(%MyApp.User{} = user), do: user
-      end
+  * `:resolve_user` - see note at `Bodyguard.resolve_user/1`
   """
 
   @type user :: any
@@ -137,13 +120,37 @@ defmodule Bodyguard do
     apply(policy, :filter, [resolve_user(actor), resource, scope, params])
   end
 
-  @doc false
+  @doc """
+  Determine out the particular user to authorize.
+
+  By default, this defers to `Bodyguard.get_current_user/1`. Customize this
+  behavior with the `:resolve_user` configuration option.
+
+  The single `actor` argument passed to the callback might already be the user
+  model itself.
+      
+      # config/config.exs
+      config Bodyguard, :resolve_user, {MyApp.Authorization, :get_current_user}
+
+      # lib/my_app/authorization.ex
+      defmodule MyApp.Authorization do
+        def get_current_user(%Plug.Conn{} = conn) do
+          # return a user
+        end
+        def get_current_user(%MyApp.User{} = user), do: user
+      end
+  """
   def resolve_user(actor) do
     {module, function} = Application.get_env(:bodyguard, :resolve_user, {__MODULE__, :get_current_user})
     apply(module, function, [actor])
   end
 
-  @doc false
+  @doc """
+  Extract the current user from a struct with assigns.
+
+  The actor can be a user model, or a struct with an `assigns` key, such as
+  `Plug.Conn` or `Phoenix.Socket`.
+  """
   def get_current_user(%{assigns: assigns}) when is_map(assigns) do
     assigns[:current_user]
   end
