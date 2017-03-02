@@ -37,12 +37,12 @@ defmodule Bodyguard.Policy do
     quote do
       @doc false
       def permit(actor, action, opts \\ []) do
-        Bodyguard.guard(__MODULE__, actor, action, opts)
+        Bodyguard.permit(__MODULE__, actor, action, opts)
       end
 
       @doc false
       def permit!(actor, action, opts \\ []) do
-        Bodyguard.guard!(__MODULE__, actor, action, opts)
+        Bodyguard.permit!(__MODULE__, actor, action, opts)
       end
 
       @doc false

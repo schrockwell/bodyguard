@@ -51,10 +51,10 @@ defmodule Bodyguard do
   `Bodyguard.Policy.guard/3` callback.
   """
 
-  @spec guard(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec permit(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
 
-  def guard(policy, actor, action, opts \\ []) do
+  def permit(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
     params = Enum.into(opts, %{})
 
@@ -70,16 +70,16 @@ defmodule Bodyguard do
   Returns `:ok` on success.
   """
 
-  @spec guard!(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec permit!(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
-  def guard!(policy, actor, action, opts \\ []) do
+  def permit!(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
 
     {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Keyword.pop(opts, :error_status, 403)
 
-    case guard(policy, actor, action, opts) do
+    case permit(policy, actor, action, opts) do
       :ok -> :ok
       {:error, reason} -> raise Bodyguard.NotAuthorizedError, 
         message: error_message, status: error_status, reason: reason
@@ -93,7 +93,7 @@ defmodule Bodyguard do
     :: boolean
 
   def can?(policy, actor, action, opts \\ []) do
-    case guard(policy, actor, action, opts) do
+    case permit(policy, actor, action, opts) do
       :ok -> true
       _ -> false
     end
