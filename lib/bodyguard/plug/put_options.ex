@@ -13,14 +13,10 @@ defmodule Bodyguard.Plug.PutOptions do
   converted into a params map and passed down to the policy.
   """
 
-  @doc """
-  Initializes the Plug.
-  """
+  @doc false
   def init(opts \\ []), do: opts
 
-  @doc """
-  Stores the default options on the `Plug.Conn`.
-  """
+  @doc false
   def call(conn, opts) do
     Plug.Conn.put_private(conn, :bodyguard_options, opts)
   end

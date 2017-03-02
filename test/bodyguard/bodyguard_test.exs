@@ -52,7 +52,7 @@ defmodule BodyguardTest do
   end
 
   defmodule FallbackController do
-    def call(_conn, {:error, _reason}), do: :fallback_result
+    def call(conn, {:error, _reason}), do: conn
   end
 
   test "basic authorization" do
@@ -120,32 +120,72 @@ defmodule BodyguardTest do
   end
 
   test "setting default options via a plug" do
+    alias Bodyguard.Plug.PutOptions
+
     conn = Plug.Test.conn(:get, "/")
 
     # Set options
-    plug_opts = Bodyguard.Plug.PutOptions.init(param: :value)
-    conn = Bodyguard.Plug.PutOptions.call(conn, plug_opts)
+    conn = PutOptions.call(conn, PutOptions.init(param: :value))
 
     # Use them in controller actions
     assert ResourceController.return_params_action(conn, %{}) == {:error, %{param: :value}}
   end
 
   test "authorizing via a plug" do
+    alias Bodyguard.Plug.Authorize
     conn = Plug.Test.conn(:get, "/") |> Plug.Conn.assign(:current_user, %User{})
     
     # Success
-    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.Policy, action: :access)
-    assert %Plug.Conn{} = Bodyguard.Plug.Authorize.call(conn, plug_opts)
+    assert %Plug.Conn{} = Authorize.call(conn, Authorize.init(policy: Context.Policy, action: :access))
 
     # Failure (raise)
-    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.OtherPolicy, action: :access)
     assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.Plug.Authorize.call(conn, plug_opts)
+      Authorize.call(conn, Authorize.init(policy: Context.OtherPolicy, action: :access))
     end
 
     # Failure (fallback recovery)
-    plug_opts = Bodyguard.Plug.Authorize.init(policy: Context.OtherPolicy, action: :access, 
-      fallback: FallbackController)
-    assert Bodyguard.Plug.Authorize.call(conn, plug_opts) == :fallback_result
+    assert %Plug.Conn{} = Authorize.call(conn, Authorize.init(policy:
+      Context.OtherPolicy, action: :access, fallback: FallbackController))
+  end
+
+  test "verifying authorization via a plug" do
+    alias Bodyguard.Plug.VerifyAuthorizedAfter
+
+    conn = Plug.Test.conn(:get, "/") |> Plug.Conn.assign(:current_user, %User{})
+
+    # Raising when no authorization performed
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      conn
+      |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
+      |> Plug.Conn.send_resp(200, "")
+    end
+
+    # Using fallback when no authorization performed
+    assert %Plug.Conn{} =
+      conn
+      |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init(fallback: FallbackController))
+      |> Plug.Conn.send_resp(200, "")
+
+    # OK when manually marked as authorized
+    assert %Plug.Conn{} =
+      conn
+      |> Bodyguard.Conn.mark_authorized
+      |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
+      |> Plug.Conn.send_resp(200, "")
+
+    # OK when authorization checked
+    assert {:ok, authorized_conn} = Bodyguard.Conn.authorize(conn, Context.Policy, :access)
+    assert %Plug.Conn{} = 
+      authorized_conn
+      |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
+      |> Plug.Conn.send_resp(200, "")
+
+    assert %Plug.Conn{} =
+      conn
+      |> Bodyguard.Conn.authorize!(Context.Policy, :access)
+      |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
+      |> Plug.Conn.send_resp(200, "")
+
+    assert {:error, _} = Bodyguard.Conn.authorize(conn, Context.OtherPolicy, :access)
   end
 end

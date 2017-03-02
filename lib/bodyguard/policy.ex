@@ -27,6 +27,8 @@ defmodule Bodyguard.Policy do
       def scope(actor, scope, opts \\ []) do
         Bodyguard.scope(__MODULE__, actor, scope, opts)
       end
+
+      defoverridable [authorize: 3, authorize!: 3, authorize?: 3, scope: 3]
     end
   end
 
