@@ -174,7 +174,7 @@ defmodule BodyguardTest do
       |> Plug.Conn.send_resp(200, "")
 
     # OK when authorization checked
-    assert {:ok, authorized_conn} = Bodyguard.Conn.authorize(conn, Context.Policy, :access)
+    assert {:ok, authorized_conn} = Context.Policy.authorize_conn(conn, :access)
     assert %Plug.Conn{} = 
       authorized_conn
       |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
@@ -182,7 +182,7 @@ defmodule BodyguardTest do
 
     assert %Plug.Conn{} =
       conn
-      |> Bodyguard.Conn.authorize!(Context.Policy, :access)
+      |> Context.Policy.authorize_conn!(:access)
       |> VerifyAuthorizedAfter.call(VerifyAuthorizedAfter.init)
       |> Plug.Conn.send_resp(200, "")
 

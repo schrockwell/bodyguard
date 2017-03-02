@@ -10,7 +10,7 @@ defmodule Bodyguard.Plug.VerifyAuthorizedAfter do
   @doc false
   def call(conn, {nil, opts}) do
     error_message = Keyword.get(opts, :error_message, "no authorization run")
-    error_status = Keyword.get(opts, :error_status, 403)
+    error_status = Keyword.get(opts, :error_status, 500)
 
     Plug.Conn.register_before_send conn, fn (after_conn) ->
       if Bodyguard.Conn.authorized?(after_conn) do

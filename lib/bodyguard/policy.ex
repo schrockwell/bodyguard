@@ -28,7 +28,18 @@ defmodule Bodyguard.Policy do
         Bodyguard.scope(__MODULE__, actor, scope, opts)
       end
 
-      defoverridable [authorize: 3, authorize!: 3, authorize?: 3, scope: 3]
+      @doc false
+      def authorize_conn(conn, action, opts \\ []) do
+        Bodyguard.Conn.authorize(conn, __MODULE__, action, opts)
+      end
+
+      @doc false
+      def authorize_conn!(conn, action, opts \\ []) do
+        Bodyguard.Conn.authorize!(conn, __MODULE__, action, opts)
+      end
+
+      defoverridable [authorize: 3, authorize!: 3, authorize?: 3, scope: 3,
+        authorize_conn: 3, authorize_conn!: 3]
     end
   end
 
