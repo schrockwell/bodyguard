@@ -57,12 +57,12 @@ defmodule Bodyguard do
   def guard(actor, context, action, opts \\ []) do
     opts = merge_options(actor, opts)
 
-    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
+    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy!(context))
     params = Enum.into(opts, %{})
 
     policy
     |> apply(:guard, [resolve_user(actor), action, params])
-    |> normalize_result
+    |> validate_result!
   end
 
   @doc """
@@ -107,7 +107,7 @@ defmodule Bodyguard do
 
   Returns a subset of the `scope` based on the user's access.
 
-  See `Bodyguard.Policy.limit/4` for details on how to define the callback
+  See `Bodyguard.Policy.scope/4` for details on how to define the callback
   functions in the policy.
 
   Bodyguard will attempt to infer the type of the data embodied by the `scope`:
@@ -129,15 +129,15 @@ defmodule Bodyguard do
   `Bodyguard.Policy.scope/4` callback.
   """
 
-  @spec limit(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
+  @spec scope(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
 
-  def limit(actor, context, scope, opts \\ []) do
-    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy(context))
-    {resource, opts} = Keyword.pop(opts, :resource, infer_resource(scope))
+  def scope(actor, context, scope, opts \\ []) do
+    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy!(context))
+    {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
 
     params = Enum.into(opts, %{})
 
-    apply(policy, :limit, [resolve_user(actor), resource, scope, params])
+    apply(policy, :scope, [resolve_user(actor), resource, scope, params])
   end
 
   @doc false
@@ -157,35 +157,34 @@ defmodule Bodyguard do
   #
 
   #
-  # Convert the result of a Bodyguard.Policy.guard/3 callback into known values
+  # Validate the result of a Bodyguard.Policy.guard/3 callback
   #
-  defp normalize_result(success) when success in [true, :ok], do: :ok
-  defp normalize_result(failure) when failure in [false, :error], do: {:error, :unauthorized}
-  defp normalize_result({:error, reason}), do: {:error, reason}
-  defp normalize_result(result) do
+  defp validate_result!(:ok), do: :ok
+  defp validate_result!({:error, reason}), do: {:error, reason}
+  defp validate_result!(result) do
     raise ArgumentError, "Unexpected result from authorization function: #{inspect(result)}"
   end
 
   #
   # Attempt to discover the type of a scope
   #
-  defp infer_resource(resource) when is_atom(resource), do: resource
-  defp infer_resource(list) when is_list(list) do
-    list |> List.first |> infer_resource
+  defp infer_resource!(resource) when is_atom(resource), do: resource
+  defp infer_resource!(list) when is_list(list) do
+    list |> List.first |> infer_resource!
   end
-  defp infer_resource(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
-  defp infer_resource(%{__struct__: struct}), do: struct
-  defp infer_resource(scope) do
+  defp infer_resource!(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
+  defp infer_resource!(%{__struct__: struct}), do: struct
+  defp infer_resource!(scope) do
     raise ArgumentError, "Unable to infer resource type given scope #{inspect(scope)}"
   end
 
   #
   # Determine the context's policy
   #
-  defp resolve_policy(context) when is_atom(context) do
+  defp resolve_policy!(context) when is_atom(context) do
     String.to_atom("#{context}.Policy")
   end
-  defp resolve_policy(context) do
+  defp resolve_policy!(context) do
     raise ArgumentError, "Expected a context module, got #{inspect(context)}"
   end
 

@@ -12,12 +12,12 @@ defmodule Bodyguard.Policy do
   The `action` is whatever user-specified contextual action is being authorized.
   It bears no intrinsic mapping to a controller "action".
 
-  To permit an action, return `true` or `:ok`.
+  To permit an action, return `:ok`.
 
-  To deny authorization, return `false`, `:error`, or `{:error, reason}`.
+  To deny authorization, return `{:error, reason}`.
   """
-  @callback guard(user :: any, action :: atom, params :: map) :: boolean | :ok
-      | :error | {:error, reason :: atom}
+  @callback guard(user :: any, action :: atom, params :: map) 
+    :: :ok | {:error, reason :: atom}
 
   @doc """
   Limit which resources a user can access.
@@ -31,5 +31,5 @@ defmodule Bodyguard.Policy do
   The result should be a limited subset of the passed-in `scope`, or the `scope` itself
   if no limitations are required.
   """
-  @callback limit(user :: term, resource :: module, scope :: any, params :: map) :: term
+  @callback scope(user :: term, resource :: module, scope :: any, params :: map) :: term
 end

@@ -16,14 +16,14 @@ defmodule BodyguardTest do
     defmodule Policy do
       def guard(%User{auth_result: result}, _action, _params), do: result
 
-      def limit(%User{auth_scope: nil}, Resource, scope, _params), do: scope
-      def limit(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
+      def scope(%User{auth_scope: nil}, Resource, scope, _params), do: scope
+      def scope(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
     end
 
     defmodule OtherPolicy do
       def guard(_user, _action, _params), do: {:error, :other_result}
 
-      def limit(_user, Resource, _scope, _params), do: :other_scope
+      def scope(_user, Resource, _scope, _params), do: :other_scope
     end
   end
 
@@ -45,17 +45,15 @@ defmodule BodyguardTest do
   end
 
   test "basic authorization" do
-    mappings = [
-      {:ok, :ok, true}, 
-      {true, :ok, true}, 
-      {:error, {:error, :unauthorized}, false},
-      {false, {:error, :unauthorized}, false}, 
-      {{:error, :not_found}, {:error, :not_found}, false}
+    results = [
+      {:ok, true},
+      {{:error, :unauthorized}, false},
+      {{:error, :not_found}, false}
     ]
 
-    for {result, normalized, boolean} <- mappings do
+    for {result, boolean} <- results do
       # Standard auth
-      assert Bodyguard.guard(%User{auth_result: result}, Context, :access) == normalized
+      assert Bodyguard.guard(%User{auth_result: result}, Context, :access) == result
 
       # Boolean auth
       assert Bodyguard.can?(%User{auth_result: result}, Context, :access) == boolean
@@ -73,12 +71,12 @@ defmodule BodyguardTest do
 
   test "overriding the default policy" do
     assert Bodyguard.guard(%User{}, Context, :access, policy: Context.OtherPolicy) == {:error, :other_result}
-    assert Bodyguard.limit(%User{}, Context, Resource, policy: Context.OtherPolicy) == :other_scope
+    assert Bodyguard.scope(%User{}, Context, Resource, policy: Context.OtherPolicy) == :other_scope
   end
 
   test "overriding the error defaults" do
     exception = assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.guard!(%User{auth_result: :error}, Context, :access, error_message: "whoops", error_status: 404)
+      Bodyguard.guard!(%User{auth_result: {:error, :foo}}, Context, :access, error_message: "whoops", error_status: 404)
     end
 
     assert exception.message == "whoops"
@@ -86,15 +84,15 @@ defmodule BodyguardTest do
   end
 
   test "basic scope limiting" do
-    assert Bodyguard.limit(%User{auth_scope: nil}, Context, Resource) == Resource
+    assert Bodyguard.scope(%User{auth_scope: nil}, Context, Resource) == Resource
 
     # Test type resolution
-    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, Resource) == :limited
-    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, %Resource{}) == :limited
-    assert Bodyguard.limit(%User{auth_scope: :limited}, Context, [%Resource{}]) == :limited
+    assert Bodyguard.scope(%User{auth_scope: :limited}, Context, Resource) == :limited
+    assert Bodyguard.scope(%User{auth_scope: :limited}, Context, %Resource{}) == :limited
+    assert Bodyguard.scope(%User{auth_scope: :limited}, Context, [%Resource{}]) == :limited
     # TODO: Check Ecto.Query
     assert_raise ArgumentError, fn ->
-      Bodyguard.limit(%User{auth_scope: :limited}, Context, %{}) # Can't determine type of %{}
+      Bodyguard.scope(%User{auth_scope: :limited}, Context, %{}) # Can't determine type of %{}
     end
 
   end

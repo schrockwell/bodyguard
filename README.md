@@ -21,8 +21,8 @@ Define a policy to control access to the `Blog` context:
 ```elixir
 defmodule MyApp.Blog.Policy do
   def guard(user, :update_post, %{post: post}) do
-    # Return :ok or true to permit
-    # Return :error, {:error, reason}, or false to deny
+    # Return :ok to permit
+    # Return {:error, reason} to deny
   end
 end
 ```
@@ -31,16 +31,16 @@ Do an authorization check:
 
 ```elixir
 with :ok <- Bodyguard.guard(user, MyApp.Blog, :update_post, post: post) do
-  update_post()
+  # ...
 end
 ```
 
-Bodyguard can extract the current user's identity from a `Plug.Conn` or `Phoenix.Socket` if you have `assigns[:current_user]` defined.
+The first argument can also be a `Plug.Conn` or `Phoenix.Socket`. The user is pulled right from `assigns[:current_user]`. This can be customized via configuration options.
 
 ```elixir
 # In a controller
 with :ok <- Bodyguard.guard(conn, MyApp.Blog, :update_post, post: post) do
-  update_post()
+  # ...
 end
 ```
 ## Installation
@@ -59,7 +59,7 @@ end
     defmodule MyApp.Web do
       def controller do
         quote do
-          import Bodyguard, only: [guard: 4, limit: 4]
+          import Bodyguard, only: [guard: 4, scope: 4]
         end
       end
       # ... same for view
@@ -81,11 +81,16 @@ end
 
   4. Wire up a fallback controller to handle `{:error, :unauthorized}`, as shown below.
 
-## Guarding Actions
+## Guarding Contexts
 
 Authorization logic is encapsulated in **policy modules** – one per context to be authorized.
 
-To define a policy for `MyApp.Blog`, define `MyApp.Blog.Policy` with the authorization logic outlined in a series of `guard(user, action, params)` functions:
+To define a policy for `MyApp.Blog`, define `MyApp.Blog.Policy` with the authorization logic outlined in a series of `guard(user, action, params)` functions.
+
+The `guard/3` callbacks must return:
+
+* `:ok` to permit the action
+* `{:error, reason}` to deny the action; most commonly `{:error, :unauthorized}`
 
 ```elixir
 defmodule MyApp.Blog.Policy do
@@ -104,16 +109,11 @@ defmodule MyApp.Blog.Policy do
 end
 ```
 
-The result of a `guard/3` callback is flexibile:
-
-* `true` and `:ok` are considered authorized
-* `false`, `:error`, and `{:error, reason}` are considered unauthorized
-
-## Limiting Access
+## Scoping Resources
 
 Another idea borrowed from Pundit, **policy scopes** are a way to embed logic about what resources a particular user can see or otherwise access.
 
-Define `limit(user, resource, scope, params)` callbacks to utilize it. Each callback is expected to return a subset of the passed-in `scope` argument.
+Define `scope(user, resource, scope, params)` callbacks to utilize it. Each callback is expected to return a subset of the passed-in `scope` argument.
 
 ```elixir
 # In a controller action
@@ -124,7 +124,7 @@ Define `limit(user, resource, scope, params)` callbacks to utilize it. Each call
 
   def list_drafts(actor) do
     actor
-    |> Bodyguard.limit(Blog, :list_drafts, Post) # <- defers to MyApp.Blog.Policy
+    |> Bodyguard.scope(Blog, :list_drafts, Post) # <- defers to MyApp.Blog.Policy
     |> Repo.all
   end
 
@@ -143,11 +143,11 @@ Define `limit(user, resource, scope, params)` callbacks to utilize it. Each call
 
 The `scope` argument can be a struct, module name, an Ecto query, or a list of structs. If it's something else, you must pass the `policy` option since the type of the resource cannot be inferred automatically.
 
-## Authorization Failure in Controllers
+## Controller Actions
 
 Phoenix 1.3 introduces the `action_fallback` controller macro (TODO: LINK ME). This is the recommended way to deal with authorization failure in Bodyguard.
 
-The fallback controller should handle the `{:error, :unauthorized}` result, as well as any custom `{:error, reason}` results returned by callbacks.
+The fallback controller should handle the `{:error, :unauthorized}` result, as well as any other `{:error, reason}` combinations returned by callbacks.
 
 ```elixir
 defmodule MyApp.Web.FallbackController do
@@ -160,9 +160,9 @@ defmodule MyApp.Web.FallbackController do
   end
 end
 ```
-If you wish to deny access without leaking the existence of a particular resource, you can return `{:error, :not_found}` from an authorization check and handle it appropriately in the fallback controller.
+If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` and handle it appropriately in the fallback controller.
 
-In lieu of fallback controllers, you can utilize `Bodyguard.guard!/4`, which will raise `Bodyguard.NotAuthorizedError` to the router, though this is not recommended.
+Forgoing fallback controllers, `Bodyguard.guard!/4` will raise `Bodyguard.NotAuthorizedError` to the router, though this is not recommended.
 
 ## Plugs
 
