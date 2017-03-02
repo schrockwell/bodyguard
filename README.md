@@ -70,7 +70,7 @@ Define a series of `permit(user, action, params)` callbacks, which must return:
 * `:ok` to permit the action
 * `{:error, reason}` to deny the action; most commonly `{:error, :unauthorized}`
 
-To trigger the callbacks, call `authorize(actor, action, params)`, where the `actor` is slightly more flexible – it can be a user, a `Plug.Conn`, or a `Phoenix.Socket`.
+To perform authorization via the callbacks, call `authorize(actor, action, opts)`, where the `actor` is slightly more flexible – it can be a user, a `Plug.Conn`, or a `Phoenix.Socket`.
 
 ```elixir
 defmodule MyApp.Blog.Policy do
@@ -95,35 +95,36 @@ end
 
 Another idea borrowed from Pundit, **policy scopes** are a way to embed logic about what resources a particular user can see or otherwise access.
 
-Define `filter(user, resource, scope, params)` callbacks to utilize it. Each callback is expected to return a subset of the passed-in `scope` argument.
+Define `filter(user, type, scope, params)` callbacks to utilize it. Each callback is expected to return a subset of the passed-in `scope` argument.
+
+To perform scoping via these filters, call `scope(user, scope, opts)`. The `type` for the callback will be inferred from the `scope`.
 
 ```elixir
 # In a controller action
 
   drafts = Blog.list_drafts(conn_or_user)
 
-# In MyApp.Blog
+# MyApp.Blog
 
   def list_drafts(actor) do
     actor
-    |> Blog.Policy.scope(Post)
+    |> Blog.Policy.scope(from p in Post, where: p.status == "draft")
     |> Repo.all
   end
 
-# In MyApp.Blog.Policy
+# MyApp.Blog.Policy
 
-  # Admin sees all drafts
-  def scope(%User{role: :admin}, Post, scope, _), do: scope
+  # Admin sees all posts
+  def filter(%User{role: :admin}, Post, scope, _), do: scope
 
-  # User sees their drafts only
-  def scope(user, Post, scope, _) do
+  # User sees their posts only
+  def filter(user, Post, scope, _) do
     from p in scope,
-      where: p.user_id == ^user.id,
-      where: p.status == "draft"
+      where: p.user_id == ^user.id
   end
 ```
 
-The `scope` argument can be a struct, module name, an Ecto query, or a list of structs. If it's something else, you must pass the `resource` option since the type of the resource cannot be inferred automatically.
+The `scope` argument can be a struct, module name, an Ecto query, or a list of structs. If it's something else, you must pass the `type` option since the type of the resource cannot be inferred.
 
 ## Controller Actions
 
@@ -138,27 +139,22 @@ defmodule MyApp.Web.FallbackController do
   def call(conn, {:error, :unauthorized}) do
     conn
     |> put_status(:unauthorized)
-    |> render(TestApp.Web.ErrorView, :"403")
-  end
-  
-  # If using the VerifyAuthorizedAfter plug
-  def call(conn, {:error, :no_authorization_run}) do
-    conn
-    |> put_status(:internal_server_error)
-    |> render(TestApp.Web.ErrorView, :"500")
+    |> render(MyApp.Web.ErrorView, :"403")
   end
 end
 ```
 
 If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` and handle it appropriately in the fallback controller.
 
-Forgoing fallback controllers, `authorize!/4` will raise `Bodyguard.NotAuthorizedError` to the router, though this is not recommended.
+If you are using the `Bodyguard.Plug.VerifyAuthorizedAfter` plug, then add a handler for `{:error, :no_authorization_run}` to return a 500.
+
+If you wish to forgo fallback controllers, `authorize!/3` will raise `Bodyguard.NotAuthorizedError` to the router, though this is not recommended.
 
 ## Plugs
 
-* `Bodyguard.Plug.Guard` – perform authorization in the middle of a pipeline; the `context` and `action` options must be provided, and an optional `fallback` controller may be specified
+* `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 * `Bodyguard.Plug.PutOptions` – set common options for a particular controller or pipeline
-* `Bodyguard.Plug.VerifyAuthorizedAfter` – perform a "sanity check" after the controller action, but before sending the response, to ensure that some authorization was performed via `Bodyguard.Conn.authorize/4`
+* `Bodyguard.Plug.VerifyAuthorizedAfter` – perform a "sanity check" after the controller action, but before sending the response, to ensure that some authorization was performed via `Bodyguard.Policy.authorize_conn/3`
 
 ## Not What You're Looking For?
 

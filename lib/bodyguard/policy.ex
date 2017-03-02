@@ -69,4 +69,6 @@ defmodule Bodyguard.Policy do
   if no limitations are required.
   """
   @callback scope(user :: term, resource :: module, scope :: any, params :: map) :: term
+
+  @callback authorize!(actor :: any, action :: atom, opts :: keyword) :: :ok
 end

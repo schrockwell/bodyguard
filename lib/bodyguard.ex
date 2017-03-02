@@ -114,10 +114,10 @@ defmodule Bodyguard do
   def scope(policy, actor, scope, opts \\ []) do
     opts = merge_options(actor, opts)
 
-    {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
+    {type, opts} = Keyword.pop(opts, :type, infer_type!(scope))
     params = Enum.into(opts, %{})
 
-    apply(policy, :filter, [resolve_user(actor), resource, scope, params])
+    apply(policy, :filter, [resolve_user(actor), type, scope, params])
   end
 
   @doc """
@@ -172,14 +172,14 @@ defmodule Bodyguard do
   #
   # Attempt to discover the type of a scope
   #
-  defp infer_resource!(resource) when is_atom(resource), do: resource
-  defp infer_resource!(list) when is_list(list) do
-    list |> List.first |> infer_resource!
+  defp infer_type!(type) when is_atom(type), do: type
+  defp infer_type!(list) when is_list(list) do
+    list |> List.first |> infer_type!
   end
-  defp infer_resource!(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
-  defp infer_resource!(%{__struct__: struct}), do: struct
-  defp infer_resource!(scope) do
-    raise ArgumentError, "Unable to infer resource type given scope #{inspect(scope)}"
+  defp infer_type!(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
+  defp infer_type!(%{__struct__: struct}), do: struct
+  defp infer_type!(scope) do
+    raise ArgumentError, "Unable to infer type given scope #{inspect(scope)}"
   end
 
   #
