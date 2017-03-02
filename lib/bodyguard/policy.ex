@@ -24,8 +24,8 @@ defmodule Bodyguard.Policy do
       end
 
       @doc false
-      def scope(actor, scope, opts \\ []) do
-        Bodyguard.scope(__MODULE__, actor, scope, opts)
+      def scope(actor, action, scope, opts \\ []) do
+        Bodyguard.scope(__MODULE__, actor, action, scope, opts)
       end
 
       @doc false

@@ -18,8 +18,8 @@ defmodule BodyguardTest do
 
       def permit(%User{auth_result: result}, _action, _params), do: result
 
-      def filter(%User{auth_scope: nil}, Resource, scope, _params), do: scope
-      def filter(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
+      def filter(%User{auth_scope: nil}, :list, scope, _params), do: scope
+      def filter(%User{auth_scope: scope}, :list, _scope, _params), do: scope
     end
 
     defmodule OtherPolicy do
@@ -28,7 +28,7 @@ defmodule BodyguardTest do
       def permit(_user, :return_params, params), do: {:error, params}
       def permit(_user, _action, _params), do: {:error, :other_result}
 
-      def filter(_user, Resource, _scope, _params), do: :other_scope
+      def filter(_user, _action, _scope, _params), do: :other_scope
     end
   end
 
@@ -90,17 +90,7 @@ defmodule BodyguardTest do
   end
 
   test "basic scope limiting" do
-    assert Context.Policy.scope(%User{auth_scope: nil}, Resource) == Resource
-
-    # Test type resolution
-    assert Context.Policy.scope(%User{auth_scope: :limited}, Resource) == :limited
-    assert Context.Policy.scope(%User{auth_scope: :limited}, %Resource{}) == :limited
-    assert Context.Policy.scope(%User{auth_scope: :limited}, [%Resource{}]) == :limited
-    # TODO: Check Ecto.Query
-    assert_raise ArgumentError, fn ->
-      Context.Policy.scope(%User{auth_scope: :limited}, %{}) # Can't determine type of %{}
-    end
-
+    assert Context.Policy.scope(%User{auth_scope: nil}, :list, :scope) == :scope
   end
 
   test "current user using a function" do

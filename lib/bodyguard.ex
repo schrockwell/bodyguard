@@ -109,15 +109,13 @@ defmodule Bodyguard do
   `Bodyguard.Policy.scope/4` callback.
   """
 
-  @spec scope(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
+  @spec scope(policy :: module, actor :: actor, action :: atom, scope :: any, opts :: keyword) :: any
 
-  def scope(policy, actor, scope, opts \\ []) do
+  def scope(policy, actor, action, scope, opts \\ []) do
     opts = merge_options(actor, opts)
-
-    {type, opts} = Keyword.pop(opts, :type, infer_type!(scope))
     params = Enum.into(opts, %{})
 
-    apply(policy, :filter, [resolve_user(actor), type, scope, params])
+    apply(policy, :filter, [resolve_user(actor), action, scope, params])
   end
 
   @doc """
@@ -167,19 +165,6 @@ defmodule Bodyguard do
   defp validate_result!({:error, reason}), do: {:error, reason}
   defp validate_result!(result) do
     raise ArgumentError, "Unexpected result from authorization function: #{inspect(result)}"
-  end
-
-  #
-  # Attempt to discover the type of a scope
-  #
-  defp infer_type!(type) when is_atom(type), do: type
-  defp infer_type!(list) when is_list(list) do
-    list |> List.first |> infer_type!
-  end
-  defp infer_type!(%{__struct__: Ecto.Query, from: {_source, schema}}), do: schema
-  defp infer_type!(%{__struct__: struct}), do: struct
-  defp infer_type!(scope) do
-    raise ArgumentError, "Unable to infer type given scope #{inspect(scope)}"
   end
 
   #
