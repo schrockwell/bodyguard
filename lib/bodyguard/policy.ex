@@ -6,6 +6,30 @@ defmodule Bodyguard.Policy do
   The module naming convention is `MyApp.MyContext.Policy`.
   """
 
+  defmacro __using__(_) do
+    quote do
+      @doc false
+      def authorize(actor, action, opts \\ []) do
+        Bodyguard.authorize(__MODULE__, actor, action, opts)
+      end
+
+      @doc false
+      def authorize!(actor, action, opts \\ []) do
+        Bodyguard.authorize!(__MODULE__, actor, action, opts)
+      end
+
+      @doc false
+      def authorize?(actor, action, opts \\ []) do
+        Bodyguard.authorize?(__MODULE__, actor, action, opts)
+      end
+
+      @doc false
+      def scope(actor, scope, opts \\ []) do
+        Bodyguard.scope(__MODULE__, actor, scope, opts)
+      end
+    end
+  end
+
   @doc """
   Authorize a user's action.
 
@@ -16,7 +40,7 @@ defmodule Bodyguard.Policy do
 
   To deny authorization, return `{:error, reason}`.
   """
-  @callback guard(user :: any, action :: atom, params :: map) 
+  @callback permit(user :: any, action :: atom, params :: map) 
     :: :ok | {:error, reason :: atom}
 
   @doc """
@@ -32,28 +56,4 @@ defmodule Bodyguard.Policy do
   if no limitations are required.
   """
   @callback scope(user :: term, resource :: module, scope :: any, params :: map) :: term
-
-  defmacro __using__(_) do
-    quote do
-      @doc false
-      def permit(actor, action, opts \\ []) do
-        Bodyguard.permit(__MODULE__, actor, action, opts)
-      end
-
-      @doc false
-      def permit!(actor, action, opts \\ []) do
-        Bodyguard.permit!(__MODULE__, actor, action, opts)
-      end
-
-      @doc false
-      def can?(actor, action, opts \\ []) do
-        Bodyguard.can?(__MODULE__, actor, action, opts)
-      end
-
-      @doc false
-      def scope(actor, scope, opts \\ []) do
-        Bodyguard.scope(__MODULE__, actor, scope, opts)
-      end
-    end
-  end
 end

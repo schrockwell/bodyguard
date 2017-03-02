@@ -51,15 +51,15 @@ defmodule Bodyguard do
   `Bodyguard.Policy.guard/3` callback.
   """
 
-  @spec permit(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec authorize(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
 
-  def permit(policy, actor, action, opts \\ []) do
+  def authorize(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
     params = Enum.into(opts, %{})
 
     policy
-    |> apply(:guard, [resolve_user(actor), action, params])
+    |> apply(:permit, [resolve_user(actor), action, params])
     |> validate_result!
   end
 
@@ -70,16 +70,16 @@ defmodule Bodyguard do
   Returns `:ok` on success.
   """
 
-  @spec permit!(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec authorize!(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
-  def permit!(policy, actor, action, opts \\ []) do
+  def authorize!(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
 
     {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Keyword.pop(opts, :error_status, 403)
 
-    case permit(policy, actor, action, opts) do
+    case authorize(policy, actor, action, opts) do
       :ok -> :ok
       {:error, reason} -> raise Bodyguard.NotAuthorizedError, 
         message: error_message, status: error_status, reason: reason
@@ -89,16 +89,15 @@ defmodule Bodyguard do
   @doc """
   The same as `guard/4`, but returns a boolean.
   """
-  @spec can?(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec authorize?(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: boolean
 
-  def can?(policy, actor, action, opts \\ []) do
-    case permit(policy, actor, action, opts) do
+  def authorize?(policy, actor, action, opts \\ []) do
+    case authorize(policy, actor, action, opts) do
       :ok -> true
       _ -> false
     end
   end
-
 
   @doc """
   Limit the user's accessible resources.
@@ -135,7 +134,7 @@ defmodule Bodyguard do
     {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
     params = Enum.into(opts, %{})
 
-    apply(policy, :scope, [resolve_user(actor), resource, scope, params])
+    apply(policy, :filter, [resolve_user(actor), resource, scope, params])
   end
 
   @doc false

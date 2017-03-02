@@ -36,11 +36,11 @@ defmodule Bodyguard.Plug.Guard do
 
   @doc false
   def call(conn, {policy, action, opts, nil}) do
-    Bodyguard.permit!(policy, conn, action, opts)
+    Bodyguard.authorize!(policy, conn, action, opts)
     conn
   end
   def call(conn, {policy, action, opts, fallback}) do
-    case Bodyguard.permit(policy, conn, action, opts) do
+    case Bodyguard.authorize(policy, conn, action, opts) do
       :ok -> conn
       result -> fallback.call(conn, result)
     end

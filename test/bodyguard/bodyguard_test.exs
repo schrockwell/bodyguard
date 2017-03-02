@@ -16,37 +16,37 @@ defmodule BodyguardTest do
     defmodule Policy do
       use Bodyguard.Policy
 
-      def guard(%User{auth_result: result}, _action, _params), do: result
+      def permit(%User{auth_result: result}, _action, _params), do: result
 
-      def scope(%User{auth_scope: nil}, Resource, scope, _params), do: scope
-      def scope(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
+      def filter(%User{auth_scope: nil}, Resource, scope, _params), do: scope
+      def filter(%User{auth_scope: scope}, Resource, _scope, _params), do: scope
     end
 
     defmodule OtherPolicy do
       use Bodyguard.Policy
 
-      def guard(_user, :return_params, params), do: {:error, params}
-      def guard(_user, _action, _params), do: {:error, :other_result}
+      def permit(_user, :return_params, params), do: {:error, params}
+      def permit(_user, _action, _params), do: {:error, :other_result}
 
-      def scope(_user, Resource, _scope, _params), do: :other_scope
+      def filter(_user, Resource, _scope, _params), do: :other_scope
     end
   end
 
   defmodule ResourceController do
     def action(conn, _params) do
-      with :ok <- Context.Policy.permit(conn, :access) do
+      with :ok <- Context.Policy.authorize(conn, :access) do
         conn
       end
     end
 
     def return_params_action(conn, _params) do
-      with :ok <- Context.OtherPolicy.permit(conn, :return_params) do
+      with :ok <- Context.OtherPolicy.authorize(conn, :return_params) do
         conn
       end
     end
 
     def action!(conn, _params) do
-      Context.Policy.permit!(conn, :access)
+      Context.Policy.authorize!(conn, :access)
       conn
     end
   end
@@ -64,17 +64,17 @@ defmodule BodyguardTest do
 
     for {result, boolean} <- results do
       # Standard auth
-      assert Context.Policy.permit(%User{auth_result: result}, :access) == result
+      assert Context.Policy.authorize(%User{auth_result: result}, :access) == result
 
       # Boolean auth
-      assert Context.Policy.can?(%User{auth_result: result}, :access) == boolean
+      assert Context.Policy.authorize?(%User{auth_result: result}, :access) == boolean
 
       # Error auth
       if boolean do
-        assert Context.Policy.permit!(%User{auth_result: result}, :access) == :ok
+        assert Context.Policy.authorize!(%User{auth_result: result}, :access) == :ok
       else
         assert_raise Bodyguard.NotAuthorizedError, fn ->
-          Context.Policy.permit!(%User{auth_result: result}, :access)
+          Context.Policy.authorize!(%User{auth_result: result}, :access)
         end
       end
     end
@@ -82,7 +82,7 @@ defmodule BodyguardTest do
 
   test "overriding the error defaults" do
     exception = assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Context.Policy.permit!(%User{auth_result: {:error, :foo}}, :access, error_message: "whoops", error_status: 404)
+      Context.Policy.authorize!(%User{auth_result: {:error, :foo}}, :access, error_message: "whoops", error_status: 404)
     end
 
     assert exception.message == "whoops"
@@ -113,7 +113,7 @@ defmodule BodyguardTest do
 
     # Use custom loader
     assert Bodyguard.resolve_user(:actor) == %User{auth_result: {:error, :custom_user}}
-    assert Context.Policy.permit(:actor, :access) == {:error, :custom_user}
+    assert Context.Policy.authorize(:actor, :access) == {:error, :custom_user}
 
     # Reset config
     Application.delete_env(:bodyguard, :resolve_user)
