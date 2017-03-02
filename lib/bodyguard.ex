@@ -54,10 +54,8 @@ defmodule Bodyguard do
   @spec guard(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
 
-  def guard(actor, context, action, opts \\ []) do
+  def guard(actor, policy, action, opts \\ []) do
     opts = merge_options(actor, opts)
-
-    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy!(context))
     params = Enum.into(opts, %{})
 
     policy
@@ -75,13 +73,13 @@ defmodule Bodyguard do
   @spec guard!(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
-  def guard!(actor, context, action, opts \\ []) do
+  def guard!(actor, policy, action, opts \\ []) do
     opts = merge_options(actor, opts)
 
     {error_message, opts} = Keyword.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Keyword.pop(opts, :error_status, 403)
 
-    case guard(actor, context, action, opts) do
+    case guard(actor, policy, action, opts) do
       :ok -> :ok
       {:error, reason} -> raise Bodyguard.NotAuthorizedError, 
         message: error_message, status: error_status, reason: reason
@@ -94,8 +92,8 @@ defmodule Bodyguard do
   @spec can?(actor :: actor, context :: module, action :: atom, opts :: keyword)
     :: boolean
 
-  def can?(actor, context, action, opts \\ []) do
-    case guard(actor, context, action, opts) do
+  def can?(actor, policy, action, opts \\ []) do
+    case guard(actor, policy, action, opts) do
       :ok -> true
       _ -> false
     end
@@ -131,10 +129,10 @@ defmodule Bodyguard do
 
   @spec scope(actor :: actor, context :: module, scope :: any, opts :: keyword) :: any
 
-  def scope(actor, context, scope, opts \\ []) do
-    {policy, opts} = Keyword.pop(opts, :policy, resolve_policy!(context))
-    {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
+  def scope(actor, policy, scope, opts \\ []) do
+    opts = merge_options(actor, opts)
 
+    {resource, opts} = Keyword.pop(opts, :resource, infer_resource!(scope))
     params = Enum.into(opts, %{})
 
     apply(policy, :scope, [resolve_user(actor), resource, scope, params])
@@ -181,11 +179,9 @@ defmodule Bodyguard do
   #
   # Determine the context's policy
   #
-  defp resolve_policy!(context) when is_atom(context) do
-    String.to_atom("#{context}.Policy")
-  end
-  defp resolve_policy!(context) do
-    raise ArgumentError, "Expected a context module, got #{inspect(context)}"
+  defp validate_policy!(policy) when is_atom(policy), do: policy
+  defp validate_policy!(policy) do
+    raise ArgumentError, "Expected a policy module, got #{inspect(policy)}"
   end
 
   #

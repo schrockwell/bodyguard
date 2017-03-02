@@ -32,4 +32,28 @@ defmodule Bodyguard.Policy do
   if no limitations are required.
   """
   @callback scope(user :: term, resource :: module, scope :: any, params :: map) :: term
+
+  defmacro __using__(_) do
+    quote do
+      @doc false
+      def permit(actor, action, opts \\ []) do
+        Bodyguard.guard(actor, __MODULE__, action, opts)
+      end
+
+      @doc false
+      def permit!(actor, action, opts \\ []) do
+        Bodyguard.guard!(actor, __MODULE__, action, opts)
+      end
+
+      @doc false
+      def can?(actor, action, opts \\ []) do
+        Bodyguard.can?(actor, __MODULE__, action, opts)
+      end
+
+      @doc false
+      def scope(actor, scope, opts \\ []) do
+        Bodyguard.scope(actor, __MODULE__, scope, opts)
+      end
+    end
+  end
 end
