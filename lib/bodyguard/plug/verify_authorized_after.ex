@@ -1,6 +1,21 @@
 defmodule Bodyguard.Plug.VerifyAuthorizedAfter do
   @behaviour Plug
 
+  @moduledoc """
+  A sanity check to ensure that at least some authorization was performed.
+
+  The check is performed *after* the controller action, but before the
+  response is sent.
+
+  Ideally this check never fails in production, so if it does it will raise a
+  500 error.
+
+  ## Options
+
+  * `error_message` – a string to describe the error (default "no authorization run")
+  * `error_status` – the HTTP status code to raise with the error (default 500)
+  """
+
   @doc false
   def init(opts \\ []) do
     {fallback, opts} = Keyword.pop(opts, :fallback, nil)

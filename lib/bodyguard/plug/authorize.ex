@@ -18,7 +18,7 @@ defmodule Bodyguard.Plug.Authorize do
 
   ## Example
 
-      plug Bodyguard.Plug.Guard, policy: MyApp.Blog, action: :access_posts,
+      plug Bodyguard.Plug.Guard, policy: MyApp.Blog.Policy, action: :access_posts,
         fallback: MyApp.Web.FallbackController
 
   """

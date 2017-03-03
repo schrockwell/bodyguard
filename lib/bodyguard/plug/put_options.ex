@@ -8,9 +8,6 @@ defmodule Bodyguard.Plug.PutOptions do
 
   These defaults are merged in with the `opts` arguments on authorization
   checks that use the `Plug.Conn`.
-
-  You can specify Bodyguard options, or define your own options which will be
-  converted into a params map and passed down to the policy.
   """
 
   @doc false

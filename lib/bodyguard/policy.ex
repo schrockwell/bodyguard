@@ -1,9 +1,6 @@
 defmodule Bodyguard.Policy do
   @moduledoc """
-  Behaviour to authorize actions within a context.
-
-  Implement this behaviour for each context that will be authorized. 
-  The module naming convention is `MyApp.MyContext.Policy`.
+  Where authorization rules live.
   """
 
   defmacro __using__(_) do
@@ -44,7 +41,7 @@ defmodule Bodyguard.Policy do
   end
 
   @doc """
-  Authorize a user's action.
+  Callback to authorize a user's action.
 
   The `action` is whatever user-specified contextual action is being authorized.
   It bears no intrinsic mapping to a controller "action".
@@ -57,18 +54,59 @@ defmodule Bodyguard.Policy do
     :: :ok | {:error, reason :: atom}
 
   @doc """
-  Limit which resources a user can access.
+  Callback to limit which resources a user can access.
 
-  The `resource` is the module of the particular struct/schema/model that is being scoped.
-
-  The `scope` argument is a broad specification of what to narrow down. 
-  Typically it is an Ecto queryable, although it can also be a list of structs
-  or any other custom data.
+  The `scope` argument is a broad specification of what to narrow down.
+  Typically it is an Ecto queryable, although it can also be a list or any
+  other custom data.
 
   The result should be a limited subset of the passed-in `scope`, or the `scope` itself
   if no limitations are required.
   """
-  @callback scope(user :: term, resource :: module, scope :: any, params :: map) :: term
+  @callback filter(user :: term, action :: atom, scope :: any, params :: map) :: term
 
-  @callback authorize!(actor :: any, action :: atom, opts :: keyword) :: :ok
+  @doc """
+  Injected function to perform authorization.
+
+  See `Bodyguard.authorize/4` for details.
+  """
+  @callback authorize(actor :: any, action :: atom, opts :: map)
+    :: :ok | {:error, reason :: atom}
+
+  @doc """
+  Injected function to perform authorization.
+
+  See `Bodyguard.authorize!/4` for details.
+  """
+  @callback authorize!(actor :: any, action :: atom, opts :: map) :: :ok
+
+  @doc """
+  Injected function to perform authorization.
+
+  See `Bodyguard.authorize?/4` for details.
+  """
+  @callback authorize?(actor :: any, action :: atom, opts :: map) :: boolean
+
+  @doc """
+  Injected function to perform scoping.
+
+  See `Bodyguard.scope/5` for details.
+  """
+  @callback scope(actor :: any, action :: atom, scope :: any, opts :: keyword) :: any
+
+
+  @doc """
+  Injected function to perform authorization on a Plug.Conn.
+
+  See `Bodyguard.Conn.authorize/4` for details.
+  """
+  @callback authorize_conn(conn :: Plug.Conn.t, action :: atom, opts :: map)
+    :: :ok | {:error, reason :: atom}
+
+  @doc """
+  Injected function to perform authorization on a Plug.Conn.
+
+  See `Bodyguard.Conn.authorize!/4` for details.
+  """
+  @callback authorize_conn!(conn :: Plug.Conn.t, action :: atom, opts :: map) :: :ok
 end

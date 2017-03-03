@@ -2,40 +2,30 @@ defmodule Bodyguard do
   @moduledoc """
   Protect your stuff!
 
+  See the [README](./readme.html) for documentation.
+
   ## Configuration Options
 
-  * `:resolve_user` - see note at `Bodyguard.resolve_user/1`
+  * `:resolve_user` - see `resolve_user/1` for details
   """
-
-  @type user :: any
-  @type actor :: Plug.Conn.t | user
 
   @doc """
   Authorize the user's actions.
 
   Returns `:ok` on authorization success, or `{:error, reason}` on failure.
 
-  See `Bodyguard.Policy.guard/3` for details on how to define the callback
-  functions in the policy.
+  See `c:Bodyguard.Policy.permit/3` for how to define the callback functions.
 
-  Out of the box, the `actor` can be a user itself, or a struct with `assigns`
-  (such as a `Plug.Conn` or a `Phoenix.Socket`), in which case
-  `assigns[:current_user]` is used. For more advanced mappings, see the
-  `:resolve_user` configuration option.
+  The `actor` can be a user itself, or a struct with `assigns` (such as a
+  `Plug.Conn` or a `Phoenix.Socket`), in which case `assigns[:current_user]`
+  is used. For more advanced cases, see `resolve_user/1`.
 
-  The `context` is a module whose functions are being authorized. By convention,
-  the policy for this context is named `[context].Policy`.
-
-  ## Options
-
-  * `policy` - specify an explicit policy
-
-  All remaining options are converted into a `params` map and passed to the
-  `Bodyguard.Policy.guard/3` callback.
+  The `opts` are converted into a `params` map and passed to the
+  `c:Bodyguard.Policy.permit/3` callback.
   """
 
-  @spec authorize(actor :: actor, context :: module, action :: atom, opts :: keyword)
-    :: :ok | {:error, :unauthorized} | {:error, reason :: atom}
+  @spec authorize(policy :: module, actor :: any, action :: atom, opts :: keyword)
+    :: :ok | {:error, reason :: atom}
 
   def authorize(policy, actor, action, opts \\ []) do
     opts = merge_options(actor, opts)
@@ -47,13 +37,21 @@ defmodule Bodyguard do
   end
 
   @doc """
-  The same as `guard/4`, but raises `Bodyguard.NotAuthorizedError` on
+  The same as `authorize/3`, but raises `Bodyguard.NotAuthorizedError` on
   authorization failure.
 
   Returns `:ok` on success.
+
+  ## Options
+  
+  * `error_message` – a string to describe the error (default "not authorized")
+  * `error_status` – the HTTP status code to raise with the error (default 403)
+
+  The remaining `opts` are converted into a `params` map and passed to the
+  `c:Bodyguard.Policy.scope/4` callback.
   """
 
-  @spec authorize!(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec authorize!(actor :: any, context :: module, action :: atom, opts :: keyword)
     :: :ok
 
   def authorize!(policy, actor, action, opts \\ []) do
@@ -70,9 +68,9 @@ defmodule Bodyguard do
   end
 
   @doc """
-  The same as `guard/4`, but returns a boolean.
+  The same as `authorize/3`, but returns a boolean.
   """
-  @spec authorize?(actor :: actor, context :: module, action :: atom, opts :: keyword)
+  @spec authorize?(actor :: any, context :: module, action :: atom, opts :: keyword)
     :: boolean
 
   def authorize?(policy, actor, action, opts \\ []) do
@@ -87,29 +85,14 @@ defmodule Bodyguard do
 
   Returns a subset of the `scope` based on the user's access.
 
-  See `Bodyguard.Policy.scope/4` for details on how to define the callback
-  functions in the policy.
+  See `c:Bodyguard.Policy.scope/4` for details on how to define the callback
+  functions.
 
-  Bodyguard will attempt to infer the type of the data embodied by the `scope`:
-
-  * If `scope` is a module, that module will be the `resource`.
-  * If `scope` is an `Ecto.Query`, the schema module will be the `resource`.
-  * If `scope` is a struct, the struct module will be the `resource`.
-  * If `scope` is a list, the first item in the list will be the `resource` 
-  using the above rules.
-  * Otherwise, the `resource` option must be supplied.
-
-  ## Options
-
-  * `policy` - overrides the default policy convention of `context.Policy`
-  * `resource` - if the resource type cannot be inferred from the `scope`
-    argument, then you can specify it here
-
-  All remaining options are converted into a `params` map and passed to the
-  `Bodyguard.Policy.scope/4` callback.
+  All `opts` are converted into a `params` map and passed to the
+  `c:Bodyguard.Policy.scope/4` callback.
   """
 
-  @spec scope(policy :: module, actor :: actor, action :: atom, scope :: any, opts :: keyword) :: any
+  @spec scope(policy :: module, actor :: any, action :: atom, scope :: any, opts :: keyword) :: any
 
   def scope(policy, actor, action, scope, opts \\ []) do
     opts = merge_options(actor, opts)
@@ -119,12 +102,12 @@ defmodule Bodyguard do
   end
 
   @doc """
-  Determine out the particular user to authorize.
+  Determine the particular user to authorize.
 
-  By default, this defers to `Bodyguard.get_current_user/1`. Customize this
-  behavior with the `:resolve_user` configuration option.
+  By default, this defers to `get_current_user/1`. 
 
-  The single `actor` argument passed to the callback might already be the user
+  Customize this behavior with the `:resolve_user` configuration option. The
+  single `actor` argument passed to the callback might already be the user
   model itself.
       
       # config/config.exs
@@ -138,6 +121,9 @@ defmodule Bodyguard do
         def get_current_user(%MyApp.User{} = user), do: user
       end
   """
+
+  @spec resolve_user(actor :: any) :: any
+
   def resolve_user(actor) do
     {module, function} = Application.get_env(:bodyguard, :resolve_user, {__MODULE__, :get_current_user})
     apply(module, function, [actor])
@@ -149,10 +135,12 @@ defmodule Bodyguard do
   The actor can be a user model, or a struct with an `assigns` key, such as
   `Plug.Conn` or `Phoenix.Socket`.
   """
+
+  @spec get_current_user(actor :: any) :: any
   def get_current_user(%{assigns: assigns}) when is_map(assigns) do
     assigns[:current_user]
   end
-  def get_current_user(user), do: user
+  def get_current_user(actor), do: actor
 
   #
   # PRIVATE
@@ -168,7 +156,7 @@ defmodule Bodyguard do
   end
 
   #
-  # Merge in default options specified on the Plug.Conn
+  # Merge in default options specified on the actor
   #
   defp merge_options(%Plug.Conn{private: %{bodyguard_options: conn_options}}, opts) do
     Keyword.merge(conn_options, opts)
