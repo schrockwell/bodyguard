@@ -4,6 +4,8 @@ defmodule Bodyguard.Plug.VerifyAuthorizedAfter do
   @moduledoc """
   A sanity check to ensure that at least some authorization was performed.
 
+  Use `c:Bodyguard.Policy.authorize_conn/3` to make this plug pass inspection.
+
   The check is performed *after* the controller action, but before the
   response is sent.
 

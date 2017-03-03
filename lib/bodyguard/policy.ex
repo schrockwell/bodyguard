@@ -98,6 +98,9 @@ defmodule Bodyguard.Policy do
   @doc """
   Injected function to perform authorization on a Plug.Conn.
 
+  You only need to use this if you are also using the
+  `Bodyguard.Plug.VerifyAuthorizedAfter` plug.
+
   See `Bodyguard.Conn.authorize/4` for details.
   """
   @callback authorize_conn(conn :: Plug.Conn.t, action :: atom, opts :: map)
@@ -105,6 +108,9 @@ defmodule Bodyguard.Policy do
 
   @doc """
   Injected function to perform authorization on a Plug.Conn.
+
+  You only need to use this if you are also using the
+  `Bodyguard.Plug.VerifyAuthorizedAfter` plug.
 
   See `Bodyguard.Conn.authorize!/4` for details.
   """
