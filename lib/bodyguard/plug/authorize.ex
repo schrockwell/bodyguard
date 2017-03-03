@@ -43,7 +43,10 @@ defmodule Bodyguard.Plug.Authorize do
   def call(conn, {policy, action, opts, fallback}) do
     case Bodyguard.Conn.authorize(conn, policy, action, opts) do
       {:ok, conn} -> conn
-      error -> fallback.call(conn, error)
+      error -> 
+        conn
+        |> fallback.call(error)
+        |> Plug.Conn.halt
     end
   end
 end

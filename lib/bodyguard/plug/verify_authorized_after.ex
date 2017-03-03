@@ -43,7 +43,9 @@ defmodule Bodyguard.Plug.VerifyAuthorizedAfter do
       if Bodyguard.Conn.authorized?(after_conn) do
         after_conn
       else
-        fallback.call(after_conn, {:error, :no_authorization_run})
+        after_conn
+        |> fallback.call({:error, :no_authorization_run})
+        |> Plug.Conn.halt
       end
     end
   end
