@@ -2,51 +2,61 @@ defmodule Bodyguard.Plug.Authorize do
   @behaviour Plug
   
   @moduledoc """
-  Performs authorization checks in a Plug pipeline.
+  Perform Action authorization in a Plug pipeline.
 
-  The `policy` and `action` options are *required*, since they cannot 
-  be automatically determined in the middle of the pipeline.
+  The connection must contain an existing `Bodyguard.Action`, which can be
+  done with `Bodyguard.Plug.BuildAction`.
 
   ## Options
 
-  * `policy` *required* - the policy to authorize with
-  * `action` *required* - the action to authorize (will be the same for all requests,
-  regardless of the controller action)
-  * `fallback` - the fallback controller that will handle authorization failure. If
-  this option is not specified, authorization failure will raise 
-  `Bodyguard.NotAuthorizedError` directly to the router.
+  * `name` *required* - the action to authorize
+  * `opts` - options to be passed down to the authorization functions
+  * `raise` - `true` (default) to raise `Bodyguard.NotAuthorizedError` on
+    failure, or `false` to continue down the pipeline, using the `fallback`
+    if provided
+  * `fallback` - If authorization fails, a `fallback` plug is called and then
+    the plug pipeline is `halt`ed. This is designed to work nicely with
+    Phoenix fallback controllers.
 
-  ## Example
+  ## Examples
 
-      plug Bodyguard.Plug.Guard, policy: MyApp.Blog.Policy, action: :access_posts,
-        fallback: MyApp.Web.FallbackController
+      # Raise on failure
+      plug Bodyguard.Plug.Authorize, name: :access_posts
 
+      # Fallback on failure
+      plug Bodyguard.Plug.Authorize, name: :access_posts, raise: false,
+        fallback: MyApp.FallbackController
+
+      # Continue on failure
+      plug Bodyguard.Plug.Authorize, name: :access_posts, raise: false
   """
 
-  @doc false
   def init(opts \\ []) do
-    {policy,   opts} = Keyword.pop(opts, :policy,   nil)
-    {action,   opts} = Keyword.pop(opts, :action,   nil)
-    {fallback, opts} = Keyword.pop(opts, :fallback, nil)
+    name      = Keyword.get(opts, :name)
+    auth_opts = Keyword.get(opts, :opts, [])
+    do_raise  = Keyword.get(opts, :raise, true)
+    fallback  = Keyword.get(opts, :fallback)
 
-    if is_nil(policy) and is_nil(action) do
-      raise ArgumentError, "Bodyguard.Plug.Guard options must specify both a :policy and an :action"
-    end
+    if is_nil(name), do: raise "#{inspect(__MODULE__)} requires a :name option"
 
-    {policy, action, opts, fallback}
+    %{name: name, opts: auth_opts, raise: do_raise, fallback: fallback}
   end
 
-  @doc false
-  def call(conn, {policy, action, opts, nil}) do
-    Bodyguard.Conn.authorize!(conn, policy, action, opts)
+  def call(conn, %{raise: true, name: name, opts: opts}) do
+    Bodyguard.Conn.authorize!(conn, name, opts)
   end
-  def call(conn, {policy, action, opts, fallback}) do
-    case Bodyguard.Conn.authorize(conn, policy, action, opts) do
-      {:ok, conn} -> conn
-      error -> 
-        conn
-        |> fallback.call(error)
-        |> Plug.Conn.halt
+  def call(conn, %{raise: false, name: name, opts: opts, fallback: nil}) do
+    Bodyguard.Conn.authorize(conn, name, opts)
+  end
+  def call(conn, %{raise: false, name: name, opts: opts, fallback: fallback}) do
+    conn = Bodyguard.Conn.authorize(conn, name, opts)
+    action = Bodyguard.Conn.get_action(conn)
+    if action.authorized? do
+      conn
+    else
+      conn
+      |> fallback.call(action.auth_result)
+      |> Plug.Conn.halt()
     end
   end
 end
