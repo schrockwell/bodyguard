@@ -2,13 +2,13 @@
 
 Bodyguard protects the boundaries of your application via a simple system of callbacks. 
 
-Policies are just modules and functions, so they can be leveraged in controllers, sockets, views, and contexts.
+Authorization policies are just modules and functions, so they can be leveraged in controllers, sockets, views, and contexts.
 
-It also provides the means to build, customize, and finally execute an authorized action in a composable way.
+Bodyguard also provides the means to execute authorized actions in a composable way.
 
 Please refer to [the complete documentation](https://hexdocs.pm/bodyguard/) for details beyond this README.
 
-Version 2.x is not backwards-compatible, so refer to [the *1.x* branch](https://github.com/schrockwell/bodyguard/tree/1.x) as necessary.
+Version 2.x is quite different from the previous version, so refer to [the *1.x* branch](https://github.com/schrockwell/bodyguard/tree/1.x) as necessary.
 
 * [Hex](https://hex.pm/packages/bodyguard)
 * [GitHub](https://github.com/schrockwell/bodyguard)
@@ -34,9 +34,7 @@ end
 
 ## Authorization
 
-Authorization logic is encapsulated in **policy modules** – typically one per context to be authorized.
-
-Define a series of `authorize/3` callbacks in the context, which must return:
+To implement the `Bodyguard.Policy` behaviour, define `authorize(user, action, params)` callbacks, which must return:
 
 * `:ok` to permit the action, or
 * `{:error, reason}` to deny the action (most commonly `{:error, :unauthorized}`)
@@ -83,6 +81,8 @@ defmodule MyApp.Web.PostController do
   use MyApp.Web, :controller
   alias MyApp.Blog
 
+  action_fallback MyApp.Web.FallbackController
+
   def index(conn, _) do
     user = # get current user
     with :ok <- Blog.authorize(user, :list_posts) do
@@ -97,12 +97,40 @@ If you wish to deny access without leaking the existence of a particular resourc
 
 ## Composable Actions
 
-TODO
+The concept of an authorized action can be encapsulated by a `Bodyguard.Action` struct. It can be constructed with some defaults, modified during the request cycle, and finally executed in a controller or socket action.
+
+This example is exactly equivalent to the above:
+
+```elixir
+defmodule MyApp.Web.PostController do
+  use MyApp.Web, :controller
+  import Bodyguard.Action
+  alias MyApp.Blog
+
+  action_fallback MyApp.Web.FallbackController
+  
+  def index(conn, _) do
+    user = # get current user
+
+    act(Blog)
+    |> put_user(user)
+    |> authorize(:list_posts)
+    |> run(fn action ->
+      posts = Blog.list_posts(action.user)
+      render(conn, posts: posts)
+    end)
+  end
+end
+```
+
+The function passed to `run/2` is called the job, and it is only executed if authorization has succeeded. If not, then the job is skipped, and the result of the authorization failure is returned instead.
+
+There are many more options – see `Bodyguard.Action` in the docs for details.
 
 ## Plugs
 
 * `Bodyguard.Plug.BuildAction` – create an Action with some defaults on the connection
-* `Bodyguard.Plug.Authorize` – perform authorization on that Action in the middle of a pipeline
+* `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 
 ## Installation
 
