@@ -14,9 +14,9 @@ defmodule Bodyguard.Plug.Authorize do
   * `raise` - `true` (default) to raise `Bodyguard.NotAuthorizedError` on
     failure, or `false` to continue down the pipeline, using the `fallback`
     if provided
-  * `fallback` - If authorization fails, a `fallback` plug is called and then
-    the plug pipeline is `halt`ed. This is designed to work nicely with
-    Phoenix fallback controllers.
+  * `fallback` - If authorization fails and `raise` is `false`, the `fallback`
+    plug is called and then the plug pipeline is `halt`ed. This is designed to
+    work nicely with Phoenix fallback controllers.
 
   ## Examples
 

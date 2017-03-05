@@ -1,5 +1,5 @@
 defmodule TestContext do
-  @behaviour Bodyguard.Policy
+  use Bodyguard.Policy
 
   defmodule User do
     defstruct []

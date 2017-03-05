@@ -20,9 +20,14 @@ defmodule PolicyTest do
     assert {:error, %{key: :value}} = Policy.authorize(context, user, :fail_with_params, key: :value)
   end
 
-  test "authorizing booleans via helper", %{context: context, user: user} do
+  test "authorizing via boolean helper", %{context: context, user: user} do
     assert Policy.authorize?(context, user, :action)
     refute Policy.authorize?(context, user, :fail)
+  end
+
+  test "authorizing via injected boolean", %{context: context, user: user} do
+    assert context.authorize?(user, :action)
+    refute context.authorize?(user, :fail)
   end
 
   test "authorizing via bangin' helpers", %{context: context, user: user} do
@@ -33,6 +38,18 @@ defmodule PolicyTest do
 
     custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
       Policy.authorize!(context, user, :fail, error_message: "whoops", error_status: 500)
+    end
+    assert %{message: "whoops", status: 500} = custom_error
+  end
+
+  test "authorizing via injected bang!", %{context: context, user: user} do
+    assert :ok = context.authorize!(user, :action)
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      context.authorize!(user, :fail)
+    end
+
+    custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
+      context.authorize!(user, :fail, error_message: "whoops", error_status: 500)
     end
     assert %{message: "whoops", status: 500} = custom_error
   end

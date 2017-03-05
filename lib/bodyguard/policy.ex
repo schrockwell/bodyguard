@@ -2,10 +2,10 @@ defmodule Bodyguard.Policy do
   @moduledoc """
   Where authorization rules live.
 
-  Implement the `c:authorize/3` callback.
+  The only requirement is to implement the `c:authorize/3` callback:
 
       defmodule MyApp.MyContext do
-        @behaviour Bodyguard.Policy
+        use Bodyguard.Policy
 
         def authorize(user, action, params) do
           # Return :ok or {:error, reason}
@@ -13,31 +13,39 @@ defmodule Bodyguard.Policy do
       end
 
 
-  Call it directly:
+  You can use the callback directly:
 
       with :ok <- MyApp.MyContext.authorize(user, :action_name, %{param: :value}) do
         # ...
       end
 
-  Or use the helper functions:
+  Or use these convenience functions:
 
-      with :ok <- Bodyguard.Policy.authorize(MyApp.MyContext, user, :action_name, param: :value) do
+      if MyApp.MyContext.authorize?(user, :action_name, param: :value) do
         # ...
       end
 
-      if Bodyguard.Policy.authorize?(MyApp.MyContext, user, :action_name, param: :value) do
-        # ...
-      end
-
-      Bodyguard.Policy.authorize!(MyApp.MyContext, user, :action_name, param: :value)
-
-  Or use a composable `Bodyguard.Action`.
+      MyApp.MyContext.authorize!(user, :action_name, param: :value)
   """
+
+  @doc false
+  defmacro __using__(_) do
+    quote do
+      @behaviour Bodyguard.Policy
+
+      def authorize!(user, action, params \\ %{}) do
+        Bodyguard.Policy.authorize!(__MODULE__, user, action, params)
+      end
+
+      def authorize?(user, action, params \\ %{}) do
+        Bodyguard.Policy.authorize?(__MODULE__, user, action, params)
+      end
+    end
+  end
 
   @type params :: %{atom => any}
   @type auth_result :: :ok | {:error, reason :: any}
   @type opts :: keyword | params
-
 
   @doc """
   Authorize a user's action.

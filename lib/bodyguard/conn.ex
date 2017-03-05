@@ -23,7 +23,7 @@ defmodule Bodyguard.Conn do
   end
 
   @doc """
-  Modify the existing Action on the connection.
+  Modify the existing Action on the connection, in-place.
   """
   @spec update_action(conn :: Plug.Conn.t, fun :: (Bodyguard.Action.t -> Bodyguard.Action.t)) :: Plug.Conn.t
   def update_action(%Conn{} = conn, fun) when is_function(fun, 1) do
@@ -31,7 +31,7 @@ defmodule Bodyguard.Conn do
   end
 
   @doc """
-  Authorize the existing Action on the connection
+  Authorize the existing Action on the connection.
   """
   @spec authorize(conn :: Plug.Conn.t, name :: atom, opts :: keyword) :: Plug.Conn.t
   def authorize(%Conn{} = conn, name, opts \\ []) do
@@ -39,7 +39,7 @@ defmodule Bodyguard.Conn do
   end
 
   @doc """
-  Authorize the existing Action on the connection, raising on failure
+  Authorize the existing Action on the connection, raising on failure.
   """
   @spec authorize!(conn :: Plug.Conn.t, name :: atom, opts :: keyword) :: Plug.Conn.t
   def authorize!(%Conn{} = conn, name, opts \\ []) do

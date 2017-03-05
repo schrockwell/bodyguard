@@ -1,14 +1,14 @@
 # Bodyguard
 
-Bodyguard protects the boundaries of your application via a simple system of callbacks. 
+Bodyguard protects the context boundaries of your application. 
 
-Authorization policies are just modules and functions, so they can be leveraged in controllers, sockets, views, and contexts.
+Its authorization rules, called policies, are composed of plain modules and functions, so they can be leveraged in controllers, sockets, views, and contexts.
 
 Bodyguard also provides the means to execute authorized actions in a composable way.
 
 Please refer to [the complete documentation](https://hexdocs.pm/bodyguard/) for details beyond this README.
 
-Version 2.x is quite different from the previous version, so refer to [the *1.x* branch](https://github.com/schrockwell/bodyguard/tree/1.x) as necessary.
+Version 2.x is quite different from previous versions, so refer to [the *1.x* branch](https://github.com/schrockwell/bodyguard/tree/1.x) if you are using versions *0.x* or *1.x*.
 
 * [Hex](https://hex.pm/packages/bodyguard)
 * [GitHub](https://github.com/schrockwell/bodyguard)
@@ -18,7 +18,7 @@ Version 2.x is quite different from the previous version, so refer to [the *1.x*
 
 ```elixir
 defmodule MyApp.Blog do
-  @behaviour Bodyguard.Policy
+  use Bodyguard.Policy
 
   def authorize(user, :update_post, %{post: post}) do
     # Return :ok to permit
@@ -41,7 +41,7 @@ To implement the `Bodyguard.Policy` behaviour, define `authorize(user, action, p
 
 ```elixir
 defmodule MyApp.Blog do
-  @behaviour Bodyguard.Policy
+  use Bodyguard.Policy
 
   # Admin users can do anything
   def authorize(%Blog.User{role: :admin}, _, _), do: :ok
@@ -58,6 +58,8 @@ defmodule MyApp.Blog do
 end
 ```
 
+The `use` macro also injects `authorize!/3` (raises on failure) and `authorize?/3` (returns a boolean) wrapper functions for convenience.
+
 For more details, see `Bodyguard.Policy` in the docs.
 
 ## Controller Actions
@@ -72,7 +74,7 @@ defmodule MyApp.Web.FallbackController do
 
   def call(conn, {:error, :unauthorized}) do
     conn
-    |> put_status(:unauthorized)
+    |> put_status(:forbidden)
     |> render(MyApp.Web.ErrorView, :"403")
   end
 end
@@ -97,7 +99,7 @@ If you wish to deny access without leaking the existence of a particular resourc
 
 ## Composable Actions
 
-The concept of an authorized action can be encapsulated by a `Bodyguard.Action` struct. It can be constructed with some defaults, modified during the request cycle, and finally executed in a controller or socket action.
+The concept of an authorized action is encapsulated by a `Bodyguard.Action` struct. It can be constructed with some defaults, modified during the request cycle, and finally executed in a controller or socket action.
 
 This example is exactly equivalent to the above:
 
@@ -112,18 +114,20 @@ defmodule MyApp.Web.PostController do
   def index(conn, _) do
     user = # get current user
 
-    act(Blog)
-    |> put_user(user)
-    |> authorize(:list_posts)
-    |> run(fn action ->
+    act(Blog)                   # Initializes a %Bodyguard.Action{}
+    |> put_user(user)           # Assigns the user
+    |> authorize(:list_posts)   # Calls Blog.authorize/3 callback
+    |> run(fn action ->         # Only executed if authorization passes
       posts = Blog.list_posts(action.user)
       render(conn, posts: posts)
-    end)
+    end)                        # Job is returned – a rendered conn
   end
 end
 ```
 
-The function passed to `run/2` is called the job, and it is only executed if authorization has succeeded. If not, then the job is skipped, and the result of the authorization failure is returned instead.
+The function passed to `run/2` is called the *job*, and it only executes if authorization succeeds. If not, then the job is skipped, and the result of the authorization failure is returned, to be handled by the fallback controller.
+
+This particular example is verbose for demonstration, but parameters common to each controller action can be constructed ahead of time via a `Bodyguard.Plug.BuildAction` plug.
 
 There are many more options – see `Bodyguard.Action` in the docs for details.
 
@@ -142,7 +146,7 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
     end
     ```
 
-  2. Add an error view for handling 403 Forbidden.
+  2. Create an error view for handling `403 Forbidden`.
 
     ```elixir
     defmodule MyApp.ErrorView do
@@ -154,8 +158,9 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
     end
     ```
 
-  3. Wire up a fallback controller to handle authorization failures, [as mentioned above](#controller-actions).
+  3. Wire up a [fallback controller](#controller-actions) to render this view on authorization failures.
 
+  4. Add `use Bodyguard.Policy` to contexts that require authorization, and implement the `authorize/3` callback.
 
 ## Alternatives
 
