@@ -37,6 +37,6 @@ defmodule Bodyguard.Plug.BuildAction do
       |> put_fallback(fallback)
       |> put_assigns(assigns)
       
-    Bodyguard.Conn.put_action(conn, action)
+    Bodyguard.Plug.put_action(conn, action)
   end
 end

@@ -68,12 +68,12 @@ defmodule Bodyguard.Plug.Authorize do
   # Authorize the existing Action in-place on the connection.
   @spec authorize_conn(conn :: Plug.Conn.t, name :: atom, opts :: keyword) :: Plug.Conn.t
   defp authorize_conn(%Plug.Conn{} = conn, name, opts) do
-    Bodyguard.Conn.update_action(conn, &Bodyguard.Action.authorize(&1, name, opts))
+    Bodyguard.Plug.update_action(conn, &Bodyguard.Action.authorize(&1, name, opts))
   end
 
   # Authorize the existing Action in-place on the connection, raising on failure.
   @spec authorize_conn!(conn :: Plug.Conn.t, name :: atom, opts :: keyword) :: Plug.Conn.t
   defp authorize_conn!(%Plug.Conn{} = conn, name, opts) do
-    Bodyguard.Conn.update_action(conn, &Bodyguard.Action.authorize!(&1, name, opts))
+    Bodyguard.Plug.update_action(conn, &Bodyguard.Action.authorize!(&1, name, opts))
   end
 end

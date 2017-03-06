@@ -1,4 +1,4 @@
-defmodule Bodyguard.Conn do
+defmodule Bodyguard.Plug do
   @moduledoc """
   Work with Actions embedded in connections.
   """
