@@ -35,9 +35,7 @@ defmodule Bodyguard.Action do
         plug Bodyguard.Plug.BuildAction, context: Blog, user: &get_current_user/1
 
         def index(conn, _) do
-          conn
-          |> authorize_conn(:list_posts)
-          |> run fn(action) ->
+          run conn.assigns.action, fn(action) ->
             posts = Blog.list_posts(action.user)
             render(conn, "index.html", posts: posts)
           end
@@ -210,16 +208,6 @@ defmodule Bodyguard.Action do
       error ->
         %{action | name: name, auth_run?: true, authorized?: false, auth_result: error}
     end
-  end
-
-  @doc """
-  Extract the Action from the connection authorize it.
-  """
-  @spec authorize_conn(conn :: Plug.Conn.t, name :: atom, opts :: keyword | assigns) :: t
-  def authorize_conn(%Plug.Conn{} = conn, name, opts \\ []) do
-    conn
-    |> Bodyguard.Conn.get_action()
-    |> authorize(name, opts)
   end
 
   @doc """

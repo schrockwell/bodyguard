@@ -4,6 +4,8 @@ defmodule Bodyguard.Plug.BuildAction do
   @moduledoc """
   Construct an Action on the connection.
 
+  The action is stored in `conn.assigns.action` for later access.
+
   #### Options
 
   See `Bodyguard.Action` for descriptions of these fields.
