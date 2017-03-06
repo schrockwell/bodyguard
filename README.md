@@ -2,19 +2,21 @@
 
 Bodyguard protects the context boundaries of your application. 
 
-Its authorization rules, called policies, are composed of plain modules and functions, so they can be leveraged in controllers, sockets, views, and contexts.
+`Bodyguard.Policy` is a simple Elixir behaviour implemented directly in the context itself, so it can be easily queried from controllers, sockets, views, and even other contexts.
 
-Bodyguard also provides the means to execute authorized actions in a composable way.
+To promote reuse and to DRY up repetitive authorization checks, `Bodyguard.Action` structs encapsulate authorized actions in a composable way.
 
 Please refer to [the complete documentation](https://hexdocs.pm/bodyguard/) for details beyond this README.
 
-Version 2.x is quite different from previous versions, so refer to [the *1.x* branch](https://github.com/schrockwell/bodyguard/tree/1.x) if you are using versions *0.x* or *1.x*.
+Version 2.0 has an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) (still maintained!) if you are using versions prior to 2.0.
 
 * [Hex](https://hex.pm/packages/bodyguard)
 * [GitHub](https://github.com/schrockwell/bodyguard)
 * [Docs](https://hexdocs.pm/bodyguard/)
 
 ## Quick Example
+
+Define authorization rules directly in the context module, in this case `MyApp.Blog`:
 
 ```elixir
 defmodule MyApp.Blog do
@@ -34,10 +36,16 @@ end
 
 ## Authorization
 
-To implement the `Bodyguard.Policy` behaviour, define `authorize(user, action, params)` callbacks, which must return:
+To implement a policy behaviour, add `use Bodyguard.Policy`, then define `authorize(user, action, params)` callbacks, which must return:
 
 * `:ok` to permit the action, or
 * `{:error, reason}` to deny the action (most commonly `{:error, :unauthorized}`)
+
+The `use` macro injects `authorize!/3` (raises on failure) and `authorize?/3` (returns a boolean) wrapper functions for convenience.
+
+The `action` argument, an atom, typically maps one-to-one with the actual context function name, although it can be more broad (e.g. `:manage_post` or `:read_post`) to authorize a wider range of individual actions.
+
+For details, see `Bodyguard.Policy` in the docs.
 
 ```elixir
 defmodule MyApp.Blog do
@@ -50,7 +58,8 @@ defmodule MyApp.Blog do
   def authorize(_, :create_post, _), do: :ok
 
   # Regular users can modify their own posts
-  def authorize(user, action, %{post: post}) when action in [:update_post, :delete_post] 
+  def authorize(user, action, %{post: post}) 
+    when action in [:update_post, :delete_post] 
     and user.id == post.user_id, do: :ok
 
   # Catch-all: deny everything else
@@ -58,15 +67,13 @@ defmodule MyApp.Blog do
 end
 ```
 
-The `use` macro also injects `authorize!/3` (raises on failure) and `authorize?/3` (returns a boolean) wrapper functions for convenience.
-
-For more details, see `Bodyguard.Policy` in the docs.
-
 ## Controller Actions
 
 Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures.
 
 The fallback controller should handle any `{:error, reason}` results returned by `authorize/3` callbacks.
+
+Normally, authorization failure results in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller.
 
 ```elixir
 defmodule MyApp.Web.FallbackController do
@@ -95,18 +102,16 @@ defmodule MyApp.Web.PostController do
 end
 ```
 
-If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` and handle it appropriately in the fallback controller.
-
 ## Composable Actions
 
-The concept of an authorized action is encapsulated by a `Bodyguard.Action` struct. It can be constructed with some defaults, modified during the request cycle, and finally executed in a controller or socket action.
+The concept of an authorized action is encapsulated by the `Bodyguard.Action` struct. It can be initialized with defaults, modified during the request cycle, and finally executed in a controller or socket action.
 
 This example is exactly equivalent to the above:
 
 ```elixir
 defmodule MyApp.Web.PostController do
   use MyApp.Web, :controller
-  import Bodyguard.Action
+  import Bodyguard.Action       # Import act/1, authorize/3, run/2, etc.
   alias MyApp.Blog
 
   action_fallback MyApp.Web.FallbackController
@@ -114,20 +119,20 @@ defmodule MyApp.Web.PostController do
   def index(conn, _) do
     user = # get current user
 
-    act(Blog)                   # Initializes a %Bodyguard.Action{}
-    |> put_user(user)           # Assigns the user
-    |> authorize(:list_posts)   # Calls Blog.authorize/3 callback
-    |> run(fn action ->         # Only executed if authorization passes
+    act(Blog)                   # Initialize a %Bodyguard.Action{}
+    |> put_user(user)           # Assign the user
+    |> authorize(:list_posts)   # Defer to Blog.authorize/3 callback
+    |> run(fn action ->         # Job only executed if authorization passes
       posts = Blog.list_posts(action.user)
       render(conn, posts: posts)
-    end)                        # Job is returned – a rendered conn
+    end)                        # Return the job's result: a rendered conn
   end
 end
 ```
 
-The function passed to `run/2` is called the *job*, and it only executes if authorization succeeds. If not, then the job is skipped, and the result of the authorization failure is returned, to be handled by the fallback controller.
+The function passed to `run/2` is called the *job*, and it only executes if authorization succeeds. If not, then the job is skipped, and the result of the authorization failure is returned instead, to be handled by the fallback controller.
 
-This particular example is verbose for demonstration, but parameters common to each controller action can be constructed ahead of time via a `Bodyguard.Plug.BuildAction` plug.
+This particular example is verbose for demonstration, but the `Bodyguard.Plug.BuildAction` plug can construct an action with common parameters common ahead of time.
 
 There are many more options – see `Bodyguard.Action` in the docs for details.
 
