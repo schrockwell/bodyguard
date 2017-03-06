@@ -2,9 +2,9 @@
 
 Bodyguard protects the context boundaries of your application. 
 
-`Bodyguard.Policy` is a simple Elixir behaviour implemented directly in the context itself, so it can be easily queried from controllers, sockets, views, and even other contexts.
+The `Bodyguard.Policy` behaviour is implemented directly in the context itself, to be queried from controllers, sockets, views, tests, and even other contexts.
 
-To promote reuse and to DRY up repetitive authorization checks, `Bodyguard.Action` structs encapsulate authorized actions in a composable way.
+To promote reuse and DRY up repetitive configuration, `Bodyguard.Action` structs encapsulate authorized actions in a composable way.
 
 Please refer to [the complete documentation](https://hexdocs.pm/bodyguard/) for details beyond this README.
 
@@ -28,13 +28,13 @@ defmodule MyApp.Blog do
   end
 end
 
-# In a controller, authorize an action
+# Authorize a controller action
 with :ok <- MyApp.Blog.authorize(user, :update_post, %{post: post}) do
   # ...
 end
 ```
 
-## Authorization
+## Policies
 
 To implement a policy behaviour, add `use Bodyguard.Policy`, then define `authorize(user, action, params)` callbacks, which must return:
 
@@ -43,7 +43,7 @@ To implement a policy behaviour, add `use Bodyguard.Policy`, then define `author
 
 The `use` macro injects `authorize!/3` (raises on failure) and `authorize?/3` (returns a boolean) wrapper functions for convenience.
 
-The `action` argument, an atom, typically maps one-to-one with the actual context function name, although it can be more broad (e.g. `:manage_post` or `:read_post`) to authorize a wider range of individual actions.
+The `action` argument, an atom, typically maps one-to-one with the actual context function name, although it can be more broad (e.g. `:manage_post` or `:read_post`) to indicate a rule encompassing a wider range of actions.
 
 For details, see `Bodyguard.Policy` in the docs.
 
@@ -67,7 +67,7 @@ defmodule MyApp.Blog do
 end
 ```
 
-## Controller Actions
+## Controllers
 
 Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures.
 
@@ -102,6 +102,8 @@ defmodule MyApp.Web.PostController do
 end
 ```
 
+See the note "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass in the `user` to each action.
+
 ## Composable Actions
 
 The concept of an authorized action is encapsulated by the `Bodyguard.Action` struct. It can be initialized with defaults, modified during the request cycle, and finally executed in a controller or socket action.
@@ -132,9 +134,26 @@ end
 
 The function passed to `run/2` is called the *job*, and it only executes if authorization succeeds. If not, then the job is skipped, and the result of the authorization failure is returned instead, to be handled by the fallback controller.
 
-This particular example is verbose for demonstration, but the `Bodyguard.Plug.BuildAction` plug can construct an action with common parameters common ahead of time.
+This particular example is verbose for demonstration, but the `Bodyguard.Plug.BuildAction` plug can be used to construct an Action with common parameters ahead of time.
 
 There are many more options – see `Bodyguard.Action` in the docs for details.
+
+## Testing
+
+Testing is pretty straightforward – just call into the policies directly.
+
+```elixir
+assert :ok == MyApp.Blog.authorize(user, :successful_action)
+assert {:error, :unauthorized} == MyApp.Blog.authorize(user, :failing_action)
+
+assert MyApp.Blog.authorize?(user, :successful_action)
+refute MyApp.Blog.authorize?(user, :failing_action)
+
+error = assert_raise Bodyguard.NotAuthorizedError, fun ->
+  MyApp.Blog.authorize!(user, :failing_action)
+end
+assert %{status: 403, message: "not authorized"} = error
+```
 
 ## Plugs
 
@@ -163,7 +182,7 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
     end
     ```
 
-  3. Wire up a [fallback controller](#controller-actions) to render this view on authorization failures.
+  3. Wire up a [fallback controller](#controllers) to render this view on authorization failures.
 
   4. Add `use Bodyguard.Policy` to contexts that require authorization, and implement the `authorize/3` callback.
 
