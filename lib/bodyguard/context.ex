@@ -15,14 +15,26 @@ defmodule Bodyguard.Context do
         import Bodyguard.Schema   # Import scope/3
       end
 
+  #### Options
+
+  * `policy` - if you don't want `authorize/3` callbacks cluttering up your
+    context, implement them in a dedicated policy module (e.g.
+    `MyApp.MyContext.Policy`) and specify it here
+
   See `Bodyguard.Policy` and `Bodyguard.Schema` for details.
   """
   
   @doc false
-  defmacro __using__(_) do
-    quote do
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
       use Bodyguard.Policy
       import Bodyguard.Schema
+
+      if policy = Keyword.get(opts, :policy) do
+        def authorize(action, user, params \\ %{}) do
+          unquote(policy).authorize(action, user, params)
+        end
+      end
     end
   end
 end

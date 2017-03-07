@@ -69,6 +69,19 @@ defmodule MyApp.Blog do
 end
 ```
 
+Or, if you prefer, define a dedicated policy module:
+
+```elixir
+defmodule MyApp.Blog.Policy do
+  use Bodyguard.Policy
+  def authorize(action, user, params), do: # ...
+end
+
+defmodule MyApp.Blog do
+  use Bodyguard.Context, policy: MyApp.Blog.Policy
+end
+```
+
 ## Controllers
 
 Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures.

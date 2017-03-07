@@ -5,7 +5,7 @@ defmodule TestContext do
     defstruct []
   end
   
-  def authorize(_action, _user, params \\ %{})
+  def authorize(action, user, params \\ %{})
   def authorize(:fail_with_params, _user, params) do
     {:error, params}
   end
@@ -17,6 +17,16 @@ defmodule TestContext do
   def authorize(_action, _user, _params) do
     :ok
   end
+end
+
+defmodule TestDeferralContext do
+  use Bodyguard.Context, policy: TestDeferralContext.Policy
+end
+
+defmodule TestDeferralContext.Policy do
+  def authorize(action, user, params \\ %{})
+  def authorize(:fail, _user, _params), do: {:error, :unauthorized}
+  def authorize(:succeed, _user, _params), do: :ok
 end
 
 ExUnit.start()
