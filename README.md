@@ -181,7 +181,7 @@ Bodyguard also provides the `Bodyguard.Schema` behaviour to query which items a 
 
 ```elixir
 defmodule MyApp.Blog.Post do
-  @behaviour Bodyguard.Schema
+  use Bodyguard.Schema
   import Ecto.Query, only: [from: 2]
 
   def scope(query, user, _) do
@@ -232,7 +232,7 @@ end
 
   4. Add `use Bodyguard.Context` to contexts that require authorization, and implement the `authorize/3` callback.
 
-  5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement the `scope/3` callback.
+  5. (Optional) Add `use Bodyguard.Schema` on schemas available for user-scoping, and implement the `scope/3` callback.
 
 ## Alternatives
 

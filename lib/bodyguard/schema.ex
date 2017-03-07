@@ -20,7 +20,7 @@ defmodule Bodyguard.Schema do
   also be specified.
 
       defmodule MyApp.MyModel.MySchema do
-        @behaviour Bodyguard.Schema
+        use Bodyguard.Schema
         import Ecto.Query, only: [from: 2]
 
         def scope(query, user, _) do
@@ -29,6 +29,19 @@ defmodule Bodyguard.Schema do
       end
   """
   @callback scope(query :: any, user :: any, params :: params) :: any
+
+  @doc false
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
+      @behaviour Bodyguard.Schema
+
+      if scope_with = Keyword.get(opts, :scope_with) do
+        def scope(query, user, params \\ %{}) do
+          unquote(scope_with).scope(query, user, params)
+        end
+      end
+    end
+  end
 
   @doc """
   Filter a query down to user-accessible items.
