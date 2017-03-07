@@ -24,21 +24,21 @@ Define authorization rules directly in the context module, in this case `MyApp.B
 defmodule MyApp.Blog do
   use Bodyguard.Context
 
-  def authorize(user, :update_post, %{post: post}) do
+  def authorize(:update_post, user, %{post: post}) do
     # Return :ok to permit
     # Return {:error, reason} to deny
   end
 end
 
 # Authorize a controller action
-with :ok <- MyApp.Blog.authorize(user, :update_post, %{post: post}) do
+with :ok <- MyApp.Blog.authorize(:update_post, user, %{post: post}) do
   # ...
 end
 ```
 
 ## Policies
 
-To implement a policy behaviour, add `use Bodyguard.Context`, then define `authorize(user, action, params)` callbacks, which must return:
+To implement a policy behaviour, add `use Bodyguard.Context`, then define `authorize(action, user, params)` callbacks, which must return:
 
 * `:ok` to permit the action, or
 * `{:error, reason}` to deny the action (most commonly `{:error, :unauthorized}`)
@@ -54,13 +54,13 @@ defmodule MyApp.Blog do
   use Bodyguard.Context
 
   # Admin users can do anything
-  def authorize(%Blog.User{role: :admin}, _, _), do: :ok
+  def authorize(_, %Blog.User{role: :admin}, _), do: :ok
 
   # Regular users can create posts
-  def authorize(_, :create_post, _), do: :ok
+  def authorize(:create_post, _, _), do: :ok
 
   # Regular users can modify their own posts
-  def authorize(user, action, %{post: post}) 
+  def authorize(action, user, %{post: post}) 
     when action in [:update_post, :delete_post] 
     and user.id == post.user_id, do: :ok
 
@@ -96,7 +96,7 @@ defmodule MyApp.Web.PostController do
 
   def index(conn, _) do
     user = # get current user
-    with :ok <- Blog.authorize(user, :list_posts) do
+    with :ok <- Blog.authorize(:list_posts, user) do
       posts = Blog.list_posts(user)
       render(conn, posts: posts)
     end
@@ -145,14 +145,14 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
 Testing is pretty straightforward – just call into the policies directly.
 
 ```elixir
-assert :ok == MyApp.Blog.authorize(user, :successful_action)
-assert {:error, :unauthorized} == MyApp.Blog.authorize(user, :failing_action)
+assert :ok == MyApp.Blog.authorize(:successful_action, user)
+assert {:error, :unauthorized} == MyApp.Blog.authorize(:failing_action, user)
 
-assert MyApp.Blog.authorize?(user, :successful_action)
-refute MyApp.Blog.authorize?(user, :failing_action)
+assert MyApp.Blog.authorize?(:successful_action, user)
+refute MyApp.Blog.authorize?(:failing_action, user)
 
 error = assert_raise Bodyguard.NotAuthorizedError, fun ->
-  MyApp.Blog.authorize!(user, :failing_action)
+  MyApp.Blog.authorize!(:failing_action, user)
 end
 assert %{status: 403, message: "not authorized"} = error
 ```

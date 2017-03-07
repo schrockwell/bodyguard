@@ -8,48 +8,48 @@ defmodule PolicyTest do
   end
 
   test "authorizing behaviour directly", %{context: context, user: user} do
-    assert :ok = context.authorize(user, :action)
-    assert {:error, :unauthorized} = context.authorize(user, :fail)
-    assert {:error, %{key: :value}} = context.authorize(user, :fail_with_params, %{key: :value})
+    assert :ok = context.authorize(:action, user)
+    assert {:error, :unauthorized} = context.authorize(:fail, user)
+    assert {:error, %{key: :value}} = context.authorize(:fail_with_params, user, %{key: :value})
   end
 
   test "authorizing via helper", %{context: context, user: user} do
-    assert :ok = Policy.authorize(context, user, :action)
-    assert {:error, :unauthorized} = Policy.authorize(context, user, :fail)
-    assert {:error, %{key: :value}} = Policy.authorize(context, user, :fail_with_params, %{key: :value})
-    assert {:error, %{key: :value}} = Policy.authorize(context, user, :fail_with_params, key: :value)
+    assert :ok = Policy.authorize(context, :action, user)
+    assert {:error, :unauthorized} = Policy.authorize(context, :fail, user)
+    assert {:error, %{key: :value}} = Policy.authorize(context, :fail_with_params, user, %{key: :value})
+    assert {:error, %{key: :value}} = Policy.authorize(context, :fail_with_params, user, key: :value)
   end
 
   test "authorizing via boolean helper", %{context: context, user: user} do
-    assert Policy.authorize?(context, user, :action)
-    refute Policy.authorize?(context, user, :fail)
+    assert Policy.authorize?(context, :action, user)
+    refute Policy.authorize?(context, :fail, user)
   end
 
   test "authorizing via injected boolean", %{context: context, user: user} do
-    assert context.authorize?(user, :action)
-    refute context.authorize?(user, :fail)
+    assert context.authorize?(:action, user)
+    refute context.authorize?(:fail, user)
   end
 
   test "authorizing via bangin' helpers", %{context: context, user: user} do
-    assert :ok = Policy.authorize!(context, user, :action)
+    assert :ok = Policy.authorize!(context, :action, user)
     assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Policy.authorize!(context, user, :fail)
+      Policy.authorize!(context, :fail, user)
     end
 
     custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Policy.authorize!(context, user, :fail, error_message: "whoops", error_status: 500)
+      Policy.authorize!(context, :fail, user, error_message: "whoops", error_status: 500)
     end
     assert %{message: "whoops", status: 500} = custom_error
   end
 
   test "authorizing via injected bang!", %{context: context, user: user} do
-    assert :ok = context.authorize!(user, :action)
+    assert :ok = context.authorize!(:action, user)
     assert_raise Bodyguard.NotAuthorizedError, fn ->
-      context.authorize!(user, :fail)
+      context.authorize!(:fail, user)
     end
 
     custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
-      context.authorize!(user, :fail, error_message: "whoops", error_status: 500)
+      context.authorize!(:fail, user, error_message: "whoops", error_status: 500)
     end
     assert %{message: "whoops", status: 500} = custom_error
   end

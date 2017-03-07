@@ -7,7 +7,7 @@ defmodule Bodyguard.Policy do
       defmodule MyApp.MyContext do
         use Bodyguard.Policy # or: use Bodyguard.Context
 
-        def authorize(user, action, params) do
+        def authorize(action, user, params) do
           # Return :ok or {:error, reason}
         end
       end
@@ -15,17 +15,17 @@ defmodule Bodyguard.Policy do
 
   You can use the callback directly:
 
-      with :ok <- MyApp.MyContext.authorize(user, :action_name, %{param: :value}) do
+      with :ok <- MyApp.MyContext.authorize(:action_name, user, %{param: :value}) do
         # ...
       end
 
   Or use these convenience functions:
 
-      if MyApp.MyContext.authorize?(user, :action_name, param: :value) do
+      if MyApp.MyContext.authorize?(:action_name, user, param: :value) do
         # ...
       end
 
-      MyApp.MyContext.authorize!(user, :action_name, param: :value)
+      MyApp.MyContext.authorize!(:action_name, user, param: :value)
   """
 
   @doc false
@@ -33,12 +33,12 @@ defmodule Bodyguard.Policy do
     quote do
       @behaviour Bodyguard.Policy
 
-      def authorize!(user, action, params \\ %{}) do
-        Bodyguard.Policy.authorize!(__MODULE__, user, action, params)
+      def authorize!(action, user, params \\ %{}) do
+        Bodyguard.Policy.authorize!(__MODULE__, action, user, params)
       end
 
-      def authorize?(user, action, params \\ %{}) do
-        Bodyguard.Policy.authorize?(__MODULE__, user, action, params)
+      def authorize?(action, user, params \\ %{}) do
+        Bodyguard.Policy.authorize?(__MODULE__, action, user, params)
       end
     end
   end
@@ -56,9 +56,9 @@ defmodule Bodyguard.Policy do
   Returns `:ok` on success, and `{:error, reason}` on failure.
   """
   @spec authorize(policy :: module, user :: any, action :: atom, opts :: opts) :: auth_result
-  def authorize(policy, user, action, opts \\ []) do
+  def authorize(policy, action, user, opts \\ []) do
     params = Enum.into(opts, %{})
-    apply(policy, :authorize, [user, action, params])
+    apply(policy, :authorize, [action, user, params])
   end
 
   @doc """
@@ -77,12 +77,12 @@ defmodule Bodyguard.Policy do
   """
 
   @spec authorize!(policy :: module, user :: any, action :: atom, opts :: opts) :: :ok
-  def authorize!(policy, user, action, opts \\ []) do
+  def authorize!(policy, action, user, opts \\ []) do
     opts = Enum.into(opts, %{})
     {error_message, opts} = Map.pop(opts, :error_message, "not authorized")
     {error_status, opts} = Map.pop(opts, :error_status, 403)
 
-    case authorize(policy, user, action, opts) do
+    case authorize(policy, action, user, opts) do
       :ok -> :ok
       error -> raise Bodyguard.NotAuthorizedError, 
         message: error_message, status: error_status, reason: error
@@ -93,8 +93,8 @@ defmodule Bodyguard.Policy do
   The same as `authorize/4`, but returns a boolean.
   """
   @spec authorize?(policy :: module, user :: any, action :: atom, opts :: opts) :: boolean
-  def authorize?(policy, user, action, opts \\ []) do
-    case authorize(policy, user, action, opts) do
+  def authorize?(policy, action, user, opts \\ []) do
+    case authorize(policy, action, user, opts) do
       :ok -> true
       _ -> false
     end
@@ -109,5 +109,5 @@ defmodule Bodyguard.Policy do
 
   To permit an action, return `:ok`. To deny, return `{:error, reason}`.
   """
-  @callback authorize(user :: any, action :: atom, params :: params) :: auth_result
+  @callback authorize(action :: atom, user :: any, params :: params) :: auth_result
 end

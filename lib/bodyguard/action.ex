@@ -202,7 +202,7 @@ defmodule Bodyguard.Action do
   end
   def authorize(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
-    case Bodyguard.Policy.authorize(action.policy, action.user, name, params) do
+    case Bodyguard.Policy.authorize(action.policy, name, action.user, params) do
       :ok ->
         %{action | name: name, auth_run?: true, authorized?: true, auth_result: :ok}
       error ->
@@ -224,7 +224,7 @@ defmodule Bodyguard.Action do
   end
   def authorize!(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
-    :ok = Bodyguard.Policy.authorize!(action.policy, action.user, name, params)
+    :ok = Bodyguard.Policy.authorize!(action.policy, name, action.user, params)
     %{action | name: name, auth_run?: true, authorized?: true, auth_result: :ok}
   end
 

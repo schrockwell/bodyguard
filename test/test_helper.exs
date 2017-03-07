@@ -5,16 +5,16 @@ defmodule TestContext do
     defstruct []
   end
   
-  def authorize(_user, _action, params \\ %{})
-  def authorize(_user, :fail_with_params, params) do
+  def authorize(_action, _user, params \\ %{})
+  def authorize(:fail_with_params, _user, params) do
     {:error, params}
   end
 
-  def authorize(_user, :fail, _params) do
+  def authorize(:fail, _user, _params) do
     {:error, :unauthorized}
   end
 
-  def authorize(_user, _action, _params) do
+  def authorize(_action, _user, _params) do
     :ok
   end
 end
