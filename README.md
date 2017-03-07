@@ -20,7 +20,7 @@ Define authorization rules directly in the context module, in this case `MyApp.B
 
 ```elixir
 defmodule MyApp.Blog do
-  use Bodyguard.Policy
+  use Bodyguard.Context
 
   def authorize(user, :update_post, %{post: post}) do
     # Return :ok to permit
@@ -36,7 +36,7 @@ end
 
 ## Policies
 
-To implement a policy behaviour, add `use Bodyguard.Policy`, then define `authorize(user, action, params)` callbacks, which must return:
+To implement a policy behaviour, add `use Bodyguard.Context`, then define `authorize(user, action, params)` callbacks, which must return:
 
 * `:ok` to permit the action, or
 * `{:error, reason}` to deny the action (most commonly `{:error, :unauthorized}`)
@@ -49,7 +49,7 @@ For details, see `Bodyguard.Policy` in the docs.
 
 ```elixir
 defmodule MyApp.Blog do
-  use Bodyguard.Policy
+  use Bodyguard.Context
 
   # Admin users can do anything
   def authorize(%Blog.User{role: :admin}, _, _), do: :ok
@@ -160,6 +160,37 @@ assert %{status: 403, message: "not authorized"} = error
 * `Bodyguard.Plug.BuildAction` – create an Action with some defaults on the connection
 * `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 
+## Schema Scopes
+
+Bodyguard also provides the `Bodyguard.Schema` behaviour to filter a schema query down which items a user can access. Implement it directly on the schema modules.
+
+```elixir
+defmodule MyApp.Blog.Post do
+  @behaviour Bodyguard.Schema
+  import Ecto.Query, only: [from: 2]
+
+  def scope(query, user, _) do
+    from ms in query, where: ms.user_id == ^user.id
+  end
+end
+```
+
+To leverage scopes, the `Bodyguard.Schema.scope/3` helper function (not the callback!) can infer the type of a query and automatically defer to the appropriate callback.
+
+```elixir
+defmodule MyApp.Blog do
+  import Bodyguard.Schema   # <-- imports scope/3 helper
+  # ...
+
+  def list_user_posts(user) do
+    Blog.Post
+    |> scope(user)          # <-- defers to MyApp.Blog.Post.scope/3
+    |> where(draft: false)
+    |> Repo.all
+  end
+end
+```
+
 ## Installation
 
   1. Add `bodyguard` to your list of dependencies in `mix.exs`.
@@ -184,7 +215,9 @@ assert %{status: 403, message: "not authorized"} = error
 
   3. Wire up a [fallback controller](#controllers) to render this view on authorization failures.
 
-  4. Add `use Bodyguard.Policy` to contexts that require authorization, and implement the `authorize/3` callback.
+  4. Add `use Bodyguard.Context` to contexts that require authorization, and implement the `authorize/3` callback.
+
+  5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement the `scope/3` callback.
 
 ## Alternatives
 
