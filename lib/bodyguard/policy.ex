@@ -5,7 +5,7 @@ defmodule Bodyguard.Policy do
   The only requirement is to implement the `c:authorize/3` callback:
 
       defmodule MyApp.MyContext do
-        use Bodyguard.Policy
+        use Bodyguard.Policy # or: use Bodyguard.Context
 
         def authorize(user, action, params) do
           # Return :ok or {:error, reason}

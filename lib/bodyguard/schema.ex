@@ -1,19 +1,19 @@
 defmodule Bodyguard.Schema do
   @moduledoc """
-  Specify user-accesible items.
+  Specify user-accessible items.
 
   The callbacks are designed to live within your schemas, hidden from the
   context boundaries of your application.
 
-  All you have to do is implement the `c:scope/3` callback on your schema. How
-  you determine what "access" means is up to you, and can be customized on a
-  case-by-case basis via `params`.
+  All you have to do is implement the `c:scope/3` callback on your schema.
+  What "access" means is up to you, and can be customized on a case-by-case
+  basis via `params`.
   """
 
   @type params :: %{atom => any}
 
   @doc """
-  Specify user-accesible items.
+  Specify user-accessible items.
 
   This callback is expected to take a `query` of this schema and filter it
   down to results that are only accessible to `user`. Arbitrary `params` may
@@ -31,7 +31,7 @@ defmodule Bodyguard.Schema do
   @callback scope(query :: any, user :: any, params :: params) :: any
 
   @doc """
-  Filter a query down to user-accesible items.
+  Filter a query down to user-accessible items.
 
   The `query` is introspected by Bodyguard in an attempt to automatically
   determine the schema type. To succeed, `query` must be an atom (schema

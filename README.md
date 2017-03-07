@@ -6,6 +6,8 @@ The `Bodyguard.Policy` behaviour is implemented directly in the context itself, 
 
 To promote reuse and DRY up repetitive configuration, `Bodyguard.Action` structs encapsulate authorized actions in a composable way.
 
+Within a context, `Bodyguard.Schema` provides a convention for querying user-accessible items.
+
 Please refer to [the complete documentation](https://hexdocs.pm/bodyguard/) for details beyond this README.
 
 Version 2.0 has an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) (still maintained!) if you are using versions prior to 2.0.
@@ -162,7 +164,7 @@ assert %{status: 403, message: "not authorized"} = error
 
 ## Schema Scopes
 
-Bodyguard also provides the `Bodyguard.Schema` behaviour to filter a schema query down which items a user can access. Implement it directly on the schema modules.
+Bodyguard also provides the `Bodyguard.Schema` behaviour to query which items a user can access. Implement it directly on schema modules.
 
 ```elixir
 defmodule MyApp.Blog.Post do
@@ -179,7 +181,7 @@ To leverage scopes, the `Bodyguard.Schema.scope/3` helper function (not the call
 
 ```elixir
 defmodule MyApp.Blog do
-  import Bodyguard.Schema   # <-- imports scope/3 helper
+  use Bodyguard.Context     # <-- imports scope/3 helper
   # ...
 
   def list_user_posts(user) do
