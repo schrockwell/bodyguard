@@ -29,4 +29,10 @@ defmodule TestDeferralContext.Policy do
   def authorize(:succeed, _user, _params), do: :ok
 end
 
+defmodule TestFallbackController do
+  def call(conn, {:error, _reason}) do
+    Plug.Conn.assign(conn, :fallback_handled, true)
+  end
+end
+
 ExUnit.start()

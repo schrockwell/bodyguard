@@ -22,11 +22,11 @@ defmodule Bodyguard.Plug.BuildAction do
   def init(opts \\ []), do: opts
 
   def call(conn, opts) do
-    context  = Keyword.get(opts, :context)
-    policy   = Keyword.get(opts, :policy, context)
-    user     = Keyword.get(opts, :user)
-    fallback = Keyword.get(opts, :fallback)
-    assigns  = Keyword.get(opts, :assigns)
+    context  = Keyword.get(opts, :context,  nil)
+    policy   = Keyword.get(opts, :policy,   context)
+    user     = Keyword.get(opts, :user,     nil)
+    fallback = Keyword.get(opts, :fallback, nil)
+    assigns  = Keyword.get(opts, :assigns,  %{})
 
     user = if is_function(user, 1), do: user.(conn), else: user
 

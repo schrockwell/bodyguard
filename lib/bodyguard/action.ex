@@ -139,16 +139,16 @@ defmodule Bodyguard.Action do
   @doc """
   Change the job to execute.
   """
-  @spec put_job(action :: t, job :: job) :: t
-  def put_job(%Action{} = action, job) when is_function(job, 1) do
+  @spec put_job(action :: t, job :: job | nil) :: t
+  def put_job(%Action{} = action, job) when is_function(job, 1) or is_nil(job) do
     %{action | job: job}
   end
 
   @doc """
   Change the fallback handler.
   """
-  @spec put_fallback(action :: t, fallback :: fallback) :: t
-  def put_fallback(%Action{} = action, fallback) when is_function(fallback, 1) do
+  @spec put_fallback(action :: t, fallback :: fallback | nil) :: t
+  def put_fallback(%Action{} = action, fallback) when is_function(fallback, 1) or is_nil(fallback) do
     %{action | fallback: fallback}
   end
 
