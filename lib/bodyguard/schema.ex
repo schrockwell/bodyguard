@@ -76,7 +76,7 @@ defmodule Bodyguard.Schema do
   @spec scope(query :: any, user :: any, opts :: keyword) :: any
   def scope(query, user, opts \\ []) do
     params = Enum.into(opts, %{})
-    {params, schema} = Map.pop(params, :schema, resolve_schema(query))
+    {schema, params} = Map.pop(params, :schema, resolve_schema(query))
     
     apply(schema, :scope, [query, user, params])
   end
