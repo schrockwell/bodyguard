@@ -4,16 +4,14 @@ defmodule PlugTest do
   alias Bodyguard.Action
 
   setup do
-    conn = 
-      Plug.Test.conn(:get, "/")
-      # |> Plug.Conn.assign(:action, :test)
-
+    conn = Plug.Test.conn(:get, "/")
     {:ok, conn: conn}
   end
 
-  def build_action(conn) do
-    opts = Bodyguard.Plug.BuildAction.init(context: TestContext, policy: TestDeferralContext.Policy)
-    Bodyguard.Plug.BuildAction.call(conn, opts)
+  def build_action(conn, opts \\ []) do
+    opts = Keyword.merge([context: TestContext, policy: TestDeferralContext.Policy], opts)
+    plug_opts = Bodyguard.Plug.BuildAction.init(opts)
+    Bodyguard.Plug.BuildAction.call(conn, plug_opts)
   end
 
   test "putting an updating an action", %{conn: conn} do
@@ -29,17 +27,20 @@ defmodule PlugTest do
     assert %Action{context: TestContext, policy: TestDeferralContext.Policy} = conn.assigns.action
   end
 
-  test "Authorize plug with raising", %{conn: conn} do
-    conn = build_action(conn)
+  test "BuildAction plug with a custom key", %{conn: conn} do
+    conn = build_action(conn, key: :custom_action)
+    assert %Action{context: TestContext, policy: TestDeferralContext.Policy} = conn.assigns.custom_action
+  end
 
+  test "Authorize plug with raising", %{conn: conn} do
     # Failure
-    opts = Bodyguard.Plug.Authorize.init(name: :fail)
+    opts = Bodyguard.Plug.Authorize.init(policy: TestContext, action: :fail)
     assert_raise Bodyguard.NotAuthorizedError, fn ->
       Bodyguard.Plug.Authorize.call(conn, opts)
     end
 
     # Success
-    opts = Bodyguard.Plug.Authorize.init(name: :succeed)
+    opts = Bodyguard.Plug.Authorize.init(policy: TestContext, action: :succeed)
     assert Bodyguard.Plug.Authorize.call(conn, opts)
   end
 
@@ -47,35 +48,17 @@ defmodule PlugTest do
     conn = build_action(conn)
     
     # Failure
-    opts      = Bodyguard.Plug.Authorize.init(name: :fail, fallback: TestFallbackController)
+    opts      = Bodyguard.Plug.Authorize.init(policy: TestContext, action: :fail, fallback: TestFallbackController)
     fail_conn = Bodyguard.Plug.Authorize.call(conn, opts)
 
     assert fail_conn.assigns[:fallback_handled]
-    refute fail_conn.assigns.action.authorized?
+    assert fail_conn.halted
 
     # Success
-    opts    = Bodyguard.Plug.Authorize.init(name: :succeed, fallback: TestFallbackController)
+    opts    = Bodyguard.Plug.Authorize.init(policy: TestContext, action: :succeed, fallback: TestFallbackController)
     ok_conn = Bodyguard.Plug.Authorize.call(conn, opts)
 
     refute ok_conn.assigns[:fallback_handled]
-    assert ok_conn.assigns.action.authorized?
-  end
-
-  test "Authorize plug and continue", %{conn: conn} do
-    conn = build_action(conn)
-    
-    # Failure
-    opts      = Bodyguard.Plug.Authorize.init(name: :fail, raise: false)
-    fail_conn = Bodyguard.Plug.Authorize.call(conn, opts)
-
-    refute fail_conn.assigns[:fallback_handled]
-    refute fail_conn.assigns.action.authorized?
-
-    # Success
-    opts    = Bodyguard.Plug.Authorize.init(name: :succeed, raise: false)
-    ok_conn = Bodyguard.Plug.Authorize.call(conn, opts)
-
-    refute ok_conn.assigns[:fallback_handled]
-    assert ok_conn.assigns.action.authorized?
+    refute ok_conn.halted
   end
 end
