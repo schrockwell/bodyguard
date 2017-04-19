@@ -190,19 +190,20 @@ defmodule Bodyguard.Action do
   The `opts` are merged in to the Action's `assigns` and passed as the
   `params`.
 
-  See `Bodyguard.Policy.authorize/3` for details.
+  See `Bodyguard.permit/3` for details.
   """
-  @spec authorize(action :: t, name :: atom, opts :: keyword | assigns) :: t
-  def authorize(action, name, opts \\ [])
-  def authorize(%Action{policy: nil}, name, _opts) do
+  @spec permit(action :: t, name :: atom, opts :: keyword | assigns) :: t
+  
+  def permit(action, name, opts \\ [])
+  def permit(%Action{policy: nil}, name, _opts) do
     raise RuntimeError, "Policy not specified for #{inspect(name)} action"
   end
-  def authorize(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
+  def permit(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
     action # Don't attempt to auth again, since we already failed
   end
-  def authorize(%Action{} = action, name, opts) do
+  def permit(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
-    case Bodyguard.Policy.authorize(action.policy, name, action.user, params) do
+    case Bodyguard.permit(action.policy, name, action.user, params) do
       :ok ->
         %{action | name: name, auth_run?: true, authorized?: true, auth_result: :ok}
       error ->
@@ -213,18 +214,18 @@ defmodule Bodyguard.Action do
   @doc """
   Same as `authorize/3` but raises on failure.
   """
-  @spec authorize!(action :: t, name :: atom, opts :: keyword | assigns) :: t
+  @spec permit!(action :: t, name :: atom, opts :: keyword | assigns) :: t
 
-  def authorize!(action, name, opts \\ [])
-  def authorize!(%Action{policy: nil}, name, _opts) do
+  def permit!(action, name, opts \\ [])
+  def permit!(%Action{policy: nil}, name, _opts) do
     raise RuntimeError, "Policy not specified for #{inspect(name)} action"
   end
-  def authorize!(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
+  def permit!(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
     action # Don't attempt to auth again, since we already failed
   end
-  def authorize!(%Action{} = action, name, opts) do
+  def permit!(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
-    :ok = Bodyguard.Policy.authorize!(action.policy, name, action.user, params)
+    Bodyguard.permit!(action.policy, name, action.user, params)
     %{action | name: name, auth_run?: true, authorized?: true, auth_result: :ok}
   end
 

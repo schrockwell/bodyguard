@@ -21,11 +21,11 @@ defmodule SchemaTest do
   end
 
   test "scoping using helpers" do
-    assert :scoped_query == Bodyguard.Schema.scope(MySchema,         :user, param: :value)
-    assert :scoped_query == Bodyguard.Schema.scope([%MySchema{}],    :user, param: :value)
-    assert :scoped_query == Bodyguard.Schema.scope(
+    assert :scoped_query == Bodyguard.scope(MySchema,         :user, param: :value)
+    assert :scoped_query == Bodyguard.scope([%MySchema{}],    :user, param: :value)
+    assert :scoped_query == Bodyguard.scope(
       %{__struct__: Ecto.Query, from: {"my_schemas", MySchema}},     :user, param: :value)
-    assert_raise ArgumentError, fn -> Bodyguard.Schema.scope("fail", :user, param: :value) end
+    assert_raise ArgumentError, fn -> Bodyguard.scope("fail", :user, param: :value) end
   end
 
   test "scoping using callback directly" do
@@ -34,6 +34,6 @@ defmodule SchemaTest do
 
   test "scoping using an external module" do
     assert :other_scoped_query == MyOtherSchema.scope(MyOtherSchema, :user)
-    assert :other_scoped_query == Bodyguard.Schema.scope(MyOtherSchema, :user)
+    assert :other_scoped_query == Bodyguard.scope(MyOtherSchema, :user)
   end
 end

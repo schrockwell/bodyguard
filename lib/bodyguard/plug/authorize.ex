@@ -9,7 +9,7 @@ defmodule Bodyguard.Plug.Authorize do
   * `policy` *required* - the policy (or context) module
   * `action` *required* - the action to authorize
   * `user` - a 1-arity function which accepts the connection and returns a
-    user
+    user. If omitted, detaults `user` to `nil`
   * `params` - params to pass to the authorization callbacks
   * `fallback` - a fallback controller or plug to handle authorization
     failure. If specified, the plug is called and then the pipeline is
@@ -31,7 +31,7 @@ defmodule Bodyguard.Plug.Authorize do
     policy    = Keyword.get(opts, :policy)
     action    = Keyword.get(opts, :action)
     user      = Keyword.get(opts, :user)
-    params    = Keyword.get(opts, :params, %{})
+    params    = Keyword.get(opts, :params, [])
     fallback  = Keyword.get(opts, :fallback)
 
     if is_nil(policy), do: raise ArgumentError, "#{inspect(__MODULE__)} :policy option required"
@@ -51,11 +51,11 @@ defmodule Bodyguard.Plug.Authorize do
   end
 
   def call(conn, %{fallback: nil} = opts) do
-    Bodyguard.Policy.authorize!(opts.policy, opts.action, opts.user, opts.params)
+    Bodyguard.permit!(opts.policy, opts.action, opts.user, opts.params)
     conn
   end
   def call(conn, opts) do
-    case Bodyguard.Policy.authorize(opts.policy, opts.action, opts.user, opts.params) do
+    case Bodyguard.permit(opts.policy, opts.action, opts.user, opts.params) do
       :ok -> conn
       error -> 
         conn

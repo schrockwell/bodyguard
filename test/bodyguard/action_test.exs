@@ -7,7 +7,7 @@ defmodule ActionTest do
   test "authorizing a basic action" do
     result =
       act(TestContext)
-      |> authorize(:some_action)
+      |> permit(:some_action)
       |> run(fn(_) -> :done end)
 
     assert result == :done
@@ -30,7 +30,7 @@ defmodule ActionTest do
   test "force deny authorization" do
     result =
       act(TestContext)
-      |> authorize(:some_action)
+      |> permit(:some_action)
       |> force_unauthorized({:error, :forced})
       |> run(fn(_) -> :done end)
 
@@ -42,7 +42,7 @@ defmodule ActionTest do
       act(TestContext)
       |> assign(:assign, :foo)
       |> assign(:other_assign, :moo)
-      |> authorize(:fail_with_params, param: :bar, other_assign: :derp)
+      |> permit(:fail_with_params, param: :bar, other_assign: :derp)
       |> run(fn(_) -> :done end)
 
     assert {:error, %{assign: :foo, other_assign: :derp, param: :bar}} = result
@@ -55,13 +55,13 @@ defmodule ActionTest do
     result =
       action
       |> put_fallback(fn(_) -> :fallback end)
-      |> authorize(:fail)
+      |> permit(:fail)
       |> run(fn(_) -> :done end)
     assert result == :fallback
 
     result =
       action
-      |> authorize(:fail)
+      |> permit(:fail)
       |> run(fn(_) -> :done end, fn(_) -> :fallback end)
     assert result == :fallback
   end
@@ -69,7 +69,7 @@ defmodule ActionTest do
   test "bang methods!" do
     assert_raise Bodyguard.NotAuthorizedError, fn -> 
       act(TestContext)
-      |> authorize(:fail)
+      |> permit(:fail)
       |> run!(fn(_) -> :done end)
     end
   end
