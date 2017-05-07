@@ -14,42 +14,42 @@ It's inspired by the Ruby gem [Pundit](https://github.com/elabs/pundit), so if y
 
   1. Add `bodyguard` to your list of dependencies in `mix.exs`:
 
-    ```elixir
-    def deps do
-      [{:bodyguard, "~> 1.0.0"}]
-    end
-    ```
+```elixir
+def deps do
+  [{:bodyguard, "~> 1.0.0"}]
+end
+```
 
   2. Add imports in `web.ex` to make convenience functions available.
 
-    ```elixir
-    # lib/my_app/web.ex
+```elixir
+# lib/my_app/web.ex
 
-    defmodule MyApp.Web do
-      def controller do
-        quote do
-          import Bodyguard.Controller  # <-- new
-        end
-      end
-      def view do
-        quote do
-          import Bodyguard.ViewHelpers  # <-- new
-        end
-      end
+defmodule MyApp.Web do
+  def controller do
+    quote do
+      import Bodyguard.Controller  # <-- new
     end
-    ```
+  end
+  def view do
+    quote do
+      import Bodyguard.ViewHelpers  # <-- new
+    end
+  end
+end
+```
 
   3. Add an error view case for handling 403 Forbidden, for when authorization fails.
 
-    ```elixir
-    defmodule MyApp.ErrorView do
-      use MyApp.Web, :view
-      # ...
-      def render("403.html", _assigns) do  # <-- new
-        "Forbidden"
-      end
-    end
-    ```
+```elixir
+defmodule MyApp.ErrorView do
+  use MyApp.Web, :view
+  # ...
+  def render("403.html", _assigns) do  # <-- new
+    "Forbidden"
+  end
+end
+```
 
 ## Policies
 
