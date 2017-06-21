@@ -1,3 +1,7 @@
+# NOTE: If you are using Phoenix 1.3-rc...
+
+... please look at the [2.0-dev](https://github.com/schrockwell/bodyguard/tree/2.0-dev) branch for a new version of Bodyguard that supports Phoenix's new context-centric application structure out-of-the-box.
+
 # Bodyguard – Simple, Flexibile Authorization
 
 Bodyguard (previously named Authy) is an authorization library that imposes a simple module naming convention to express authorization.
