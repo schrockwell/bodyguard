@@ -4,13 +4,20 @@ defmodule Bodyguard.Mixfile do
   def project do
     [
       app: :bodyguard,
-      version: "1.0.0",
+      version: "2.0.0",
       elixir: "~> 1.3",
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
       deps: deps(),
       description: description(),
-      package: package()
+      package: package(),
+
+      # Docs
+      name: "Bodyguard",
+      docs: [
+        extras: ["README.md"],
+        main: "readme"
+      ]
     ]
   end
 
@@ -23,10 +30,8 @@ defmodule Bodyguard.Mixfile do
 
   defp description do
     """
-    Bodyguard is a simple, flexibile authorization library for Phoenix apps.
-    It imposes some naming conventions so that policy modules can be easily
-    located and queried at runtime depending on the context of the authorization.
-    It was inspired by the behavior and conventions of Ruby's Pundit gem.
+    Bodyguard is a simple, flexibile authorization library with a focus
+    on Phoenix 1.3+ apps.
     """
   end
 

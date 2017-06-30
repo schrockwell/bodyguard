@@ -1,7 +1,6 @@
 defmodule Bodyguard.NotAuthorizedError do
   @moduledoc """
-  Raised when authorization fails, or when an authorization check has not been
-  performed by the end of the Plug pipeline.
+  Raised when authorization fails.
   """
   defexception [:message, :status, :reason]
 end
