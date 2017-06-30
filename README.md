@@ -204,23 +204,23 @@ end
 
   1. Add `bodyguard` to your list of dependencies in `mix.exs`.
 
-    ```elixir
-    def deps do
-      [{:bodyguard, "~> 2.0.0"}]
-    end
-    ```
+```elixir
+def deps do
+  [{:bodyguard, "~> 2.0.0"}]
+end
+```
 
   2. Create an error view for handling `403 Forbidden`.
 
-    ```elixir
-    defmodule MyApp.ErrorView do
-      use MyApp.Web, :view
+```elixir
+defmodule MyApp.ErrorView do
+  use MyApp.Web, :view
 
-      def render("403.html", _assigns) do
-        "Forbidden"
-      end
-    end
-    ```
+  def render("403.html", _assigns) do
+    "Forbidden"
+  end
+end
+```
 
   3. Wire up a [fallback controller](#controllers) to render this view on authorization failures.
 
