@@ -30,32 +30,35 @@ defmodule Bodyguard.Plug.Authorize do
   def init(opts \\ []) do
     policy    = Keyword.get(opts, :policy)
     action    = Keyword.get(opts, :action)
-    user      = Keyword.get(opts, :user)
+    user_fun  = Keyword.get(opts, :user)
     params    = Keyword.get(opts, :params, [])
     fallback  = Keyword.get(opts, :fallback)
 
     if is_nil(policy), do: raise ArgumentError, "#{inspect(__MODULE__)} :policy option required"
+
     if is_nil(action), do: raise ArgumentError, "#{inspect(__MODULE__)} :action option required"
-    unless is_nil(user) or is_function(user, 1),
-      do: raise ArgumentError, "#{inspect(__MODULE__)} :user options must be nil or a 1-arity function that accepts conn and returns a user"
+
+    unless is_nil(user_fun) or is_function(user_fun, 1),
+      do: raise ArgumentError, "#{inspect(__MODULE__)} :user option must be a 1-arity function that accepts conn and returns a user"
+
     unless is_nil(fallback) or is_atom(fallback),
       do: raise ArgumentError, "#{inspect(__MODULE__)} :fallback option must be a plug module"
 
     %{
       policy:   policy,
       action:   action,
-      user:     user,
+      user_fun: user_fun,
       params:   params,
       fallback: fallback,
     }
   end
 
   def call(conn, %{fallback: nil} = opts) do
-    Bodyguard.permit!(opts.policy, opts.action, call_user(conn, opts.user), opts.params)
+    Bodyguard.permit!(opts.policy, opts.action, call_user(conn, opts.user_fun), opts.params)
     conn
   end
   def call(conn, opts) do
-    case Bodyguard.permit(opts.policy, opts.action, call_user(conn, opts.user), opts.params) do
+    case Bodyguard.permit(opts.policy, opts.action, call_user(conn, opts.user_fun), opts.params) do
       :ok -> conn
       error ->
         conn
@@ -64,7 +67,8 @@ defmodule Bodyguard.Plug.Authorize do
     end
   end
 
-  defp call_user(conn, user) do
-    user.(conn)
+  defp call_user(_conn, nil), do: nil
+  defp call_user(conn, user_fun) do
+    user_fun.(conn)
   end
 end

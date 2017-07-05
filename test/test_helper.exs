@@ -2,10 +2,15 @@ defmodule TestContext do
   @behaviour Bodyguard.Policy
 
   defmodule User do
-    defstruct []
+    defstruct [allow: true]
   end
   
   def authorize(action, user, params \\ %{})
+
+  def authorize(_, %User{allow: false}, _params) do
+    {:error, :unauthorized}
+  end
+
   def authorize(:fail_with_params, _user, params) do
     {:error, params}
   end
