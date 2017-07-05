@@ -51,16 +51,20 @@ defmodule Bodyguard.Plug.Authorize do
   end
 
   def call(conn, %{fallback: nil} = opts) do
-    Bodyguard.permit!(opts.policy, opts.action, opts.user, opts.params)
+    Bodyguard.permit!(opts.policy, opts.action, call_user(conn, opts.user), opts.params)
     conn
   end
   def call(conn, opts) do
-    case Bodyguard.permit(opts.policy, opts.action, opts.user, opts.params) do
+    case Bodyguard.permit(opts.policy, opts.action, call_user(conn, opts.user), opts.params) do
       :ok -> conn
-      error -> 
+      error ->
         conn
         |> opts.fallback.call(error)
         |> Plug.Conn.halt()
     end
+  end
+
+  defp call_user(conn, user) do
+    user.(conn)
   end
 end
