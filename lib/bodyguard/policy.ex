@@ -72,7 +72,6 @@ defmodule Bodyguard.Policy do
     auth_args = [{:user, line, nil} | func_args]
     auth_func = {func_name, line, auth_args}
 
-
     names = func_args |> get_args |> Enum.map(&elem(&1, 0))
     authed = quote do
       # not 100% sure I need this
