@@ -89,7 +89,6 @@ defmodule Bodyguard.Policy do
       )
       map = Enum.zip(unquote(names), values) |> Enum.into(%{})
       with :ok <- authorize(unquote(func_name), var!(user), map) do
-        # unquote(noauth_func_name)(unquote(func_args))
         unquote(body)
       end
     end

@@ -52,8 +52,15 @@ defmodule PolicyTest do
     assert {:error, :unauthorized} = context.fail(user, %{})
   end
 
-  # test "implicit authorization with defauth in separate policy", %{user: user} do
-  #   assert :succeed = TestDeferralContext.succeed(user, %{})
-  #   refute {:error, :unauthorized} = TestDeferralContext.fail(user, %{})
-  # end
+  test "implicit authorization with defauth and deferral policy" do
+    context = TestDefauthDeferralContext
+    user = %TestDefauthDeferralContext.User{allow: true}
+
+    assert :succeed = context.succeed(user)
+    assert :override = context.succeed(user, :override)
+    assert :result = context.succeed(user, %{result: :result})
+    assert :var2 = context.succeed(user, :var1, :var2, :var3)
+    assert :var2 = context.succeed(user, :var1, %{var2: :var2}, :var3)
+    assert {:error, :unauthorized} = context.fail(user, %{})
+  end
 end
