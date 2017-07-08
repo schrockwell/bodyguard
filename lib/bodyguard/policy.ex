@@ -67,15 +67,12 @@ defmodule Bodyguard.Policy do
   def do_get_args(_, acc), do: acc
 
   defmacro defauth({func_name,line,func_args}, [do: body]) do
-    # noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
+    noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
+    noauth_func = {noauth_func_name, line, func_args}
     auth_args = [{:user, line, nil} | func_args]
     auth_func = {func_name, line, auth_args}
 
-    # IO.inspect "==========================="
-    # IO.inspect func_args
-    # IO.inspect "---------------------------"
-    # IO.inspect get_args(func_args)
-    # IO.inspect "==========================="
+
     names = func_args |> get_args |> Enum.map(&elem(&1, 0))
     authed = quote do
       # not 100% sure I need this
@@ -92,12 +89,14 @@ defmodule Bodyguard.Policy do
       )
       map = Enum.zip(unquote(names), values) |> Enum.into(%{})
       with :ok <- authorize(unquote(func_name), var!(user), map) do
+        # unquote(noauth_func_name)(unquote(func_args))
         unquote(body)
       end
     end
 
     quote do
       def(unquote(auth_func), unquote([do: authed]))
+      def(unquote(noauth_func), unquote([do: body]))
     end
   end
 
