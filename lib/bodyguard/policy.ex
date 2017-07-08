@@ -49,10 +49,81 @@ defmodule Bodyguard.Policy do
   """
   @callback authorize(action :: atom, user :: any, params :: %{atom => any}) :: auth_result
 
+  # defp auth_and_run(func, user, args) do
+  #   with :ok <- apply(:authorize, [func, user, args]) do
+  #     apply(func, [args])
+  #   end
+  # end
+  def get_args(args), do: do_get_args(args, [])
+  def do_get_args([], acc), do: acc
+  def do_get_args([{_, _, context} = var | rest], acc) when not is_list(context) do
+    acc = [var | acc]
+    do_get_args(rest, acc)
+  end
+  def do_get_args([ {_, _, context} | rest], acc) when is_list(context) do
+    acc = do_get_args(context, acc)
+    do_get_args(rest, acc)
+  end
+  def do_get_args(_, acc), do: acc
+
+  defmacro defauth({func_name,line,func_args}, [do: body]) do
+    # noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
+    auth_args = [{:user, line, nil} | func_args]
+    auth_func = {func_name, line, auth_args}
+
+    # IO.inspect "==========================="
+    # IO.inspect func_args
+    # IO.inspect "---------------------------"
+    # IO.inspect get_args(func_args)
+    # IO.inspect "==========================="
+    names = func_args |> get_args |> Enum.map(&elem(&1, 0))
+    authed = quote do
+      # not 100% sure I need this
+      values = unquote(
+        func_args
+        |> get_args
+        |> Enum.map(fn arg ->  quote do
+            # allow to access a value at runtime knowing the name
+            # elixir macros are hygienic so it's necessary to mark it
+            # explicitly
+            var!(unquote(arg))
+          end
+        end)
+      )
+      map = Enum.zip(unquote(names), values) |> Enum.into(%{})
+      with :ok <- authorize(unquote(func_name), var!(user), map) do
+        unquote(body)
+      end
+    end
+
+    quote do
+      def(unquote(auth_func), unquote([do: authed]))
+    end
+  end
+
+  ####
+  # Goal State
+  ####
+  # def create_user(user, params) do
+  #   auth_apply(:create_user, :__create_user__, user, params)
+  # end
+
+  # def __create_user__(params) do
+  #   # Do stuff
+  # end
+
+  # def auth_apply(action, real_action, user, params) do
+  #   with :ok <- authorize(action, user, params) do
+  #     apply(real_action, params)
+  #     # __create_user__(params)
+  #   end
+  # end
+
   @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Bodyguard.Policy
+      import Bodyguard.Policy
 
       if policy = Keyword.get(opts, :policy) do
         def authorize(action, user, params \\ %{}) do
