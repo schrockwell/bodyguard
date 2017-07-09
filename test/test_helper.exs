@@ -66,6 +66,10 @@ defmodule TestDefauthContext do
     {:error, :unauthorized}
   end
 
+  defauth noargs do
+    :succeed
+  end
+
   defauth fail(_params) do
     :fail
   end
@@ -97,6 +101,10 @@ defmodule TestDefauthDeferralContext do
 
   defauth fail(_params) do
     :fail
+  end
+
+  defauth noargs do
+    :succeed
   end
 
   defauth succeed(%{result: result}) do

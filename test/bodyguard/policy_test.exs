@@ -44,34 +44,37 @@ defmodule PolicyTest do
     context = TestDefauthContext
     user = %TestDefauthContext.User{allow: true}
 
-    assert :succeed = context.succeed(user)
-    assert :override = context.succeed(user, :override)
-    assert :result = context.succeed(user, %{result: :result})
-    assert :var2 = context.succeed(user, :var1, :var2, :var3)
-    assert :var2 = context.succeed(user, :var1, %{var2: :var2}, :var3)
+    assert :succeed                = context.succeed(user)
+    assert :override               = context.succeed(user, :override)
+    assert :result                 = context.succeed(user, %{result: :result})
+    assert :var2                   = context.succeed(user, :var1, :var2, :var3)
+    assert :var2                   = context.succeed(user, :var1, %{var2: :var2}, :var3)
     assert {:error, :unauthorized} = context.fail(user, %{})
+    assert :succeed                = context.noargs(user)
   end
 
   test "testability skipping auth" do
     context = TestDefauthContext
 
-    assert :succeed = context.__succeed__()
+    assert :succeed  = context.__succeed__()
     assert :override = context.__succeed__(:override)
-    assert :result = context.__succeed__(%{result: :result})
-    assert :var2 = context.__succeed__(:var1, :var2, :var3)
-    assert :var2 = context.__succeed__(:var1, %{var2: :var2}, :var3)
-    assert :fail = context.__fail__(%{})
+    assert :result   = context.__succeed__(%{result: :result})
+    assert :var2     = context.__succeed__(:var1, :var2, :var3)
+    assert :var2     = context.__succeed__(:var1, %{var2: :var2}, :var3)
+    assert :fail     = context.__fail__(%{})
+    assert :succeed  = context.__noargs__()
   end
 
   test "implicit authorization with defauth and deferral policy" do
     context = TestDefauthDeferralContext
     user = %TestDefauthDeferralContext.User{allow: true}
 
-    assert :succeed = context.succeed(user)
-    assert :override = context.succeed(user, :override)
-    assert :result = context.succeed(user, %{result: :result})
-    assert :var2 = context.succeed(user, :var1, :var2, :var3)
-    assert :var2 = context.succeed(user, :var1, %{var2: :var2}, :var3)
+    assert :succeed                = context.succeed(user)
+    assert :override               = context.succeed(user, :override)
+    assert :result                 = context.succeed(user, %{result: :result})
+    assert :var2                   = context.succeed(user, :var1, :var2, :var3)
+    assert :var2                   = context.succeed(user, :var1, %{var2: :var2}, :var3)
     assert {:error, :unauthorized} = context.fail(user, %{})
+    assert :succeed                = context.noargs(user)
   end
 end

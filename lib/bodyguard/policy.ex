@@ -62,6 +62,9 @@ defmodule Bodyguard.Policy do
     {noauth_func_name, noauth_func}
   end
 
+  defp create_authed_method(func_name, line, nil) do
+    {func_name, line, [{:user, line, nil}]}
+  end
   defp create_authed_method(func_name, line, func_args) do
     auth_args = [{:user, line, nil} | func_args]
     {func_name, line, auth_args}
