@@ -49,57 +49,60 @@ defmodule Bodyguard.Policy do
   """
   @callback authorize(action :: atom, user :: any, params :: %{atom => any}) :: auth_result
 
-  # defp auth_and_run(func, user, args) do
-  #   with :ok <- apply(:authorize, [func, user, args]) do
-  #     apply(func, [args])
-  #   end
+  # defp get_args(func_args) do
+  #   {_, args} = func_args
+  #     |> Enum.reverse
+  #     |> Macro.postwalk([], fn
+  #       {name, _, nil} = node, acc -> {node, [node | acc]}
+  #       node, acc -> {node, acc}
+  #     end)
+  #   args
   # end
 
-  def get_args(args), do: do_get_args(Enum.reverse(args), [])
-  defp do_get_args([], acc), do: acc
-  defp do_get_args([{_, _, context} = var | rest], acc) when not is_list(context) do
-    do_get_args(rest, [var | acc])
-  end
-  defp do_get_args([ {_, _, context} | rest], acc) when is_list(context) do
-    acc = do_get_args(context, acc)
-    do_get_args(rest, acc)
-  end
-  defp do_get_args([ {_, {_, _, context} = var} | rest], acc) when not is_list(context) do
-    acc = [var | acc]
-    do_get_args(rest, acc)
-  end
-  defp do_get_args([atom_val], acc) when is_atom(atom_val), do: acc
-  defp do_get_args(hmm, acc) do
-    IO.inspect "PROBABLE Problem ----"
-    IO.inspect hmm
-    acc
+  defp get_names(func_args) do
+    {_, arg_names} = func_args
+      |> Enum.reverse
+      |> Macro.postwalk([], fn
+        {name, _, nil} = node, acc -> {node, [name | acc]}
+        node, acc -> {node, acc}
+      end)
+    arg_names
   end
 
   defmacro defauth({func_name,line,func_args}, [do: body]) do
     IO.inspect "============================"
     IO.inspect "Macro Scope"
     IO.inspect func_args
+
+    # create unauthed method sig header (function)
     noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
     noauth_func = {noauth_func_name, line, func_args}
+
+    # create authed method sig header (function)
     auth_args = [{:user, line, nil} | func_args]
     auth_func = {func_name, line, auth_args}
 
-    names = func_args |> get_args |> Enum.map(&elem(&1, 0))
-
+    # <block>This block of code confuses me. Couldn't I just use what I did w/ 'args' for
+    # the entire block>
+    names = get_names(func_args)
     authed = quote do
-      values = unquote(
-        func_args
-        |> get_args
-        |> Enum.map(fn arg ->  quote do
-            var!(unquote(arg))
-          end
-        end)
-      )
-      map = Enum.zip(unquote(names), values) |> Enum.into(%{})
-      args = unquote(names)
+      # values = unquote(
+      #   func_args
+      #   |> get_args
+      #   |> Enum.map(fn arg -> quote do
+      #       var!(unquote(arg))
+      #     end
+      #   end)
+      # )
+      # map = Enum.zip(unquote(names), values) |> Enum.into(%{})
+      # </block>
+      # Functionalize.  I could optimize it if that's possible, but I'm not sure
+      # it's not already fast this way. (function)
+      arg_map = binding() |> Enum.into(%{})
+      arg_values = unquote(names)
         |> Enum.reverse
         |> Enum.reduce([], &([Keyword.get(binding(), &1) | &2]))
-      auth_apply(__MODULE__, unquote(func_name), unquote(noauth_func_name), var!(user), map, args)
+      auth_apply(__MODULE__, unquote(func_name), unquote(noauth_func_name), var!(user), arg_map, arg_values)
       # with :ok <- authorize(unquote(func_name), var!(user), map) do
       #   args = unquote(names)
       #     |> Enum.reverse
@@ -125,6 +128,9 @@ defmodule Bodyguard.Policy do
   #   # Do stuff
   # end
 
+  # Is passing in the 'mod' value from the Caller scope the best way to do this?
+  # seems like there ought to be another way.  Also, rename the parameters, and create
+  # @spec calls!
   def auth_apply(mod, action, real_action, user, param_map, param_list) do
     with :ok <- apply(mod, :authorize, [action, user, param_map]) do
       apply(mod, real_action, param_list)
