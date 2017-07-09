@@ -49,91 +49,37 @@ defmodule Bodyguard.Policy do
   """
   @callback authorize(action :: atom, user :: any, params :: %{atom => any}) :: auth_result
 
-  # defp get_args(func_args) do
-  #   {_, args} = func_args
-  #     |> Enum.reverse
-  #     |> Macro.postwalk([], fn
-  #       {name, _, nil} = node, acc -> {node, [node | acc]}
-  #       node, acc -> {node, acc}
-  #     end)
-  #   args
-  # end
-
   defp get_names(func_args) do
-    {_, arg_names} = func_args
-      |> Enum.reverse
-      |> Macro.postwalk([], fn
-        {name, _, nil} = node, acc -> {node, [name | acc]}
-        node, acc -> {node, acc}
-      end)
+    {_, arg_names} = Macro.postwalk(func_args, [], &do_get_names/2)
     arg_names
+  end
+  defp do_get_names({name, _, nil} = node, acc), do: {node, [name | acc]}
+  defp do_get_names(node, acc), do: {node, acc}
+
+  defp create_unauthed_method(func_name, line, func_args) do
+    noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
+    noauth_func = {noauth_func_name, line, func_args}
+    {noauth_func_name, noauth_func}
+  end
+
+  defp create_authed_method(func_name, line, func_args) do
+    auth_args = [{:user, line, nil} | func_args]
+    {func_name, line, auth_args}
   end
 
   defmacro defauth({func_name,line,func_args}, [do: body]) do
-    IO.inspect "============================"
-    IO.inspect "Macro Scope"
-    IO.inspect func_args
-
-    # create unauthed method sig header (function)
-    noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
-    noauth_func = {noauth_func_name, line, func_args}
-
-    # create authed method sig header (function)
-    auth_args = [{:user, line, nil} | func_args]
-    auth_func = {func_name, line, auth_args}
-
-    # <block>This block of code confuses me. Couldn't I just use what I did w/ 'args' for
-    # the entire block>
-    names = get_names(func_args)
-    authed = quote do
-      # values = unquote(
-      #   func_args
-      #   |> get_args
-      #   |> Enum.map(fn arg -> quote do
-      #       var!(unquote(arg))
-      #     end
-      #   end)
-      # )
-      # map = Enum.zip(unquote(names), values) |> Enum.into(%{})
-      # </block>
-      # Functionalize.  I could optimize it if that's possible, but I'm not sure
-      # it's not already fast this way. (function)
-      arg_map = binding() |> Enum.into(%{})
-      arg_values = unquote(names)
-        |> Enum.reverse
-        |> Enum.reduce([], &([Keyword.get(binding(), &1) | &2]))
-      auth_apply(__MODULE__, unquote(func_name), unquote(noauth_func_name), var!(user), arg_map, arg_values)
-      # with :ok <- authorize(unquote(func_name), var!(user), map) do
-      #   args = unquote(names)
-      #     |> Enum.reverse
-      #     |> Enum.reduce([], &([Keyword.get(binding(), &1) | &2]))
-      #   apply(__MODULE__, unquote(noauth_func_name), args)
-      # end
-    end
+    {noauth_func_name, noauth_func} = create_unauthed_method(func_name,line,func_args)
+    auth_func = create_authed_method(func_name,line,func_args)
+    arg_names = get_names(func_args)
 
     quote do
-      def(unquote(auth_func), unquote([do: authed]))
+      def unquote(auth_func) do
+        arg_map = binding() |> Enum.into(%{})
+        arg_values = unquote(arg_names)
+          |> Enum.reduce([], &([Keyword.get(binding(), &1) | &2]))
+        handle_auth_and_apply(unquote(func_name), unquote(noauth_func_name), var!(user), arg_map, arg_values)
+      end
       def(unquote(noauth_func), unquote([do: body]))
-    end
-  end
-
-  ####
-  # Goal State
-  ####
-  # def create_user(user, params) do
-  #   auth_apply(:create_user, :__create_user__, user, params)
-  # end
-
-  # def __create_user__(params) do
-  #   # Do stuff
-  # end
-
-  # Is passing in the 'mod' value from the Caller scope the best way to do this?
-  # seems like there ought to be another way.  Also, rename the parameters, and create
-  # @spec calls!
-  def auth_apply(mod, action, real_action, user, param_map, param_list) do
-    with :ok <- apply(mod, :authorize, [action, user, param_map]) do
-      apply(mod, real_action, param_list)
     end
   end
 
@@ -148,6 +94,13 @@ defmodule Bodyguard.Policy do
           unquote(policy).authorize(action, user, params)
         end
       end
+
+      def handle_auth_and_apply(action, action_impl, user, param_map, param_list) do
+        with :ok <- apply(__MODULE__, :authorize, [action, user, param_map]) do
+          apply(__MODULE__, action_impl, param_list)
+        end
+      end
+      defoverridable handle_auth_and_apply: 5
     end
   end
 end
