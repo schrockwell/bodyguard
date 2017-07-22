@@ -39,7 +39,7 @@ defmodule PolicyTest do
   end
 
   test "specifying a separate policy", %{user: user} do
-    assert :ok                     = TestDeferralContext.authorize(:succeed, user)
-    assert {:error, :unauthorized} = TestDeferralContext.authorize(:fail, user)
+    assert :ok                     = Bodyguard.permit(TestDeferralContext, :succeed, user)
+    assert {:error, :unauthorized} = Bodyguard.permit(TestDeferralContext, :fail, user)
   end
 end

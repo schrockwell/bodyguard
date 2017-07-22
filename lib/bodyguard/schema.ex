@@ -45,9 +45,7 @@ defmodule Bodyguard.Schema do
       @behaviour Bodyguard.Schema
 
       if scope_with = Keyword.get(opts, :scope_with) do
-        def scope(query, user, params \\ %{}) do
-          unquote(scope_with).scope(query, user, params)
-        end
+        defdelegate scope(query, user, params), to: scope_with
       end
     end
   end

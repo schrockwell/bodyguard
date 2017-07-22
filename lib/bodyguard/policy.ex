@@ -57,9 +57,7 @@ defmodule Bodyguard.Policy do
       @behaviour Bodyguard.Policy
 
       if policy = Keyword.get(opts, :policy) do
-        def authorize(action, user, params \\ %{}) do
-          unquote(policy).authorize(action, user, params)
-        end
+        defdelegate authorize(action, user, params), to: policy
       end
     end
   end

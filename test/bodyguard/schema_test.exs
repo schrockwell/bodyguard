@@ -33,7 +33,6 @@ defmodule SchemaTest do
   end
 
   test "scoping using an external module" do
-    assert :other_scoped_query == MyOtherSchema.scope(MyOtherSchema, :user)
     assert :other_scoped_query == Bodyguard.scope(MyOtherSchema, :user)
   end
 end
