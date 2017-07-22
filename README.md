@@ -159,7 +159,7 @@ assert Bodyguard.permit(MyApp.Blog, :successful_action, user)
 refute Bodyguard.permit(MyApp.Blog, :failing_action, user)
 
 error = assert_raise Bodyguard.NotAuthorizedError, fun ->
-  Bodyguard.permit(MyApp.Blog, :failing_action, user)
+  Bodyguard.permit!(MyApp.Blog, :failing_action, user)
 end
 assert %{status: 403, message: "not authorized"} = error
 ```

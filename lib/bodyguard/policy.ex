@@ -51,14 +51,59 @@ defmodule Bodyguard.Policy do
   """
   @callback authorize(action :: atom, user :: any, params :: %{atom => any} | any) :: auth_result
 
+  defp get_names(func_args) do
+    {_, arg_names} = Macro.postwalk(func_args, [], &do_get_names/2)
+    arg_names
+  end
+  defp do_get_names({name, _, nil} = node, acc), do: {node, [name | acc]}
+  defp do_get_names(node, acc), do: {node, acc}
+
+  defp create_unauthed_method(func_name, line, func_args) do
+    noauth_func_name = ("__" <> Atom.to_string(func_name) <> "__") |> String.to_atom
+    noauth_func = {noauth_func_name, line, func_args}
+    {noauth_func_name, noauth_func}
+  end
+
+  defp create_authed_method(func_name, line, nil) do
+    {func_name, line, [{:user, line, nil}]}
+  end
+  defp create_authed_method(func_name, line, func_args) do
+    auth_args = [{:user, line, nil} | func_args]
+    {func_name, line, auth_args}
+  end
+
+  defmacro defauth({func_name,line,func_args}, [do: body]) do
+    {noauth_func_name, noauth_func} = create_unauthed_method(func_name,line,func_args)
+    auth_func = create_authed_method(func_name,line,func_args)
+    arg_names = get_names(func_args)
+
+    quote do
+      def unquote(auth_func) do
+        arg_map = binding() |> Enum.into(%{})
+        arg_values = unquote(arg_names)
+          |> Enum.reduce([], &([Keyword.get(binding(), &1) | &2]))
+        handle_auth_and_apply(unquote(func_name), unquote(noauth_func_name), var!(user), arg_map, arg_values)
+      end
+      def(unquote(noauth_func), unquote([do: body]))
+    end
+  end
+
   @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Bodyguard.Policy
+      import Bodyguard.Policy
 
       if policy = Keyword.get(opts, :policy) do
         defdelegate authorize(action, user, params), to: policy
       end
+
+      def handle_auth_and_apply(action, action_impl, user, param_map, param_list) do
+        with :ok <- apply(__MODULE__, :authorize, [action, user, param_map]) do
+          apply(__MODULE__, action_impl, param_list)
+        end
+      end
+      defoverridable handle_auth_and_apply: 5
     end
   end
 end
