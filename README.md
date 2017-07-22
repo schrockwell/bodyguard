@@ -205,7 +205,7 @@ end
 
 ```elixir
 def deps do
-  [{:bodyguard, "~> 2.0.0"}]
+  [{:bodyguard, "~> 2.1"}]
 end
 ```
 
