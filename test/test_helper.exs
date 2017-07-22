@@ -1,5 +1,5 @@
 defmodule TestContext do
-  @behaviour Bodyguard.Policy
+  use Bodyguard
 
   defmodule User do
     defstruct [allow: true]
@@ -37,7 +37,7 @@ defmodule TestContext do
 end
 
 defmodule TestDeferralContext do
-  use Bodyguard.Policy, policy: TestDeferralContext.Policy
+  use Bodyguard, policy: TestDeferralContext.Policy
 end
 
 defmodule TestDeferralContext.Policy do

@@ -2,7 +2,7 @@
 
 Bodyguard protects the context boundaries of your application. 💪
 
-Version 2.0 was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks can be implemented directly in contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
+Version 2.0 was designed from the ground-up to integrate nicely with Phoenix contexts. Authorization is contained completely within contexts so that the business logic it represents does not leak out. This keeps your contextual actions safe, and ensures consumers do not contain repetitive, error-prone authorization checks. 
 
 To promote reuse and DRY up repetitive configuration, authorization can be constructed and executed in a composable way with `Bodyguard.Action`.
 
@@ -19,34 +19,51 @@ This is an all-new API, so refer to [the `1.x` branch](https://github.com/schroc
 Define authorization rules directly in the context module, in this case `MyApp.Blog`:
 
 ```elixir
+# lib/my_app/blog.ex
 defmodule MyApp.Blog do
-  @behaviour Bodyguard.Policy
+  use Bodyguard
 
-  # Implement this callback:
-  def authorize(:update_post, user, %{post: post}) do
+  # Bodyguard callback
+  def authorize(:update_post, user, post) do
     # Return :ok or true to permit
     # Return :error, {:error, reason}, or false to deny
   end
-end
 
-# Authorize a controller action (note the keyword list is converted to a map for the callback):
-with :ok <- Bodyguard.permit(MyApp.Blog, :update_post, user, post: post) do
-  # ...
+  # This context function will return:
+  #   - {:ok, post} if successful
+  #   - {:error, changeset} if operation fails
+  #   - {:error, :unauthorized} if authorization fails
+  def update_post(user, post_params) do
+    post = MyApp.Repo.get!(MyApp.Blog.Post, post_params["id"])
+    with :ok <- permit(:update_post, user, post) do  # <-- permit/3 helper function
+      do_update_post(post, post_params)
+    end
+  end
+
+  # Do the heavy lifting here
+  defp do_update_post(post, post_params) do
+    # ...
+  end
 end
 ```
 
 ## Policies
 
-To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then define `authorize(action, user, params)` callbacks, which must return:
+Add `use Bodyguard` to a context, then define `authorize(action, user, params)` callbacks, which must return:
 
 * `:ok` or `true` to permit the action
 * `:error`, `{:error, reason}`, or `false` to deny the action
 
+**Don't use these callbacks directly** – instead, use the wrapper functions injected into the context: `permit/3`, `permit?/3`, and `permit!/3`.
+
 The `action` argument, an atom, might map one-to-one with the actual context function name, or it can be more broad (e.g. `:manage_post` or `:read_post`) to indicate a rule encompassing a wider range of actions.
 
+The passed-in `params` can be any type. If it's a keyword list, then it's coerced into a map to make `authorize/3` pattern-matching more convenient.
+
 ```elixir
+# lib/my_app/blog.ex
 defmodule MyApp.Blog do
-  @behaviour Bodyguard.Policy
+  use Bodyguard
 
   # Admin users can do anything
   def authorize(_, %Blog.User{role: :admin}, _), do: true
@@ -54,9 +71,9 @@ defmodule MyApp.Blog do
   # Regular users can create posts
   def authorize(:create_post, _, _), do: true
 
-  # Regular users can modify their own posts
-  def authorize(action, %{id: user_id}, %{post: %{user_id: user_id}}) 
-    when action in [:update_post, :delete_post], do: true
+  # Regular users can modify their own posts (note the user_id pattern match)
+  def authorize(action, %{id: user_id}, %MyApp.Blog.Post{user_id: user_id}),
+    do: action in [:update_post, :delete_post]
 
   # Catch-all: deny everything else
   def authorize(_, _, _), do: false
@@ -66,12 +83,15 @@ end
 If you prefer a more structured approach, define a dedicated policy module outside of the context, and configure the context to `use` it with the `:policy` option:
 
 ```elixir
+# lib/my_app/blog.ex
 defmodule MyApp.Blog do
-  use Bodyguard.Policy, policy: MyApp.Blog.Policy
+  use Bodyguard, policy: MyApp.Blog.Policy
 end
 
+# lib/my_app/blog/policy.ex
 defmodule MyApp.Blog.Policy do
   @behaviour Bodyguard.Policy
+
   def authorize(action, user, params), do: # ...
 end
 ```
@@ -87,6 +107,7 @@ The fallback controller should handle any `{:error, reason}` results returned by
 Normally, authorization failure results in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller.
 
 ```elixir
+# lib/my_app/web/controllers/post_controller.ex
 defmodule MyApp.Web.PostController do
   use MyApp.Web, :controller
 
@@ -94,13 +115,13 @@ defmodule MyApp.Web.PostController do
 
   def index(conn, _) do
     user = conn.assigns.current_user
-    with :ok <- Bodyguard.permit(MyApp.Blog, :list_posts, user) do
-      posts = MyApp.Blog.list_posts(user)
+    with {:ok, posts} <- MyApp.Blog.list_posts(user) do
       render(conn, posts: posts)
     end
   end
 end
 
+# lib/my_app/web/controllers/fallback_controller.ex
 defmodule MyApp.Web.FallbackController do
   use MyApp.Web, :controller
 
@@ -121,6 +142,7 @@ The concept of an authorized action is encapsulated by the `Bodyguard.Action` st
 This example is exactly equivalent to the above:
 
 ```elixir
+# lib/my_app/web/controllers/post_controller.ex
 defmodule MyApp.Web.PostController do
   use MyApp.Web, :controller
   import Bodyguard.Action       # Import act/1, permit/3, run/2, etc.
@@ -128,15 +150,13 @@ defmodule MyApp.Web.PostController do
   action_fallback MyApp.Web.FallbackController
   
   def index(conn, _) do
-    user = # get current user
-
-    act(MyApp.Blog)             # Initialize a %Bodyguard.Action{}
-    |> put_user(user)           # Assign the user
-    |> permit(:list_posts)      # Check with MyApp.Blog.authorize/3 callback
-    |> run(fn action ->         # Job only executed if authorization passes
+    act(MyApp.Blog)                        # Initialize a %Bodyguard.Action{}
+    |> put_user(conn.assigns.current_user) # Assign the user
+    |> permit(:list_posts)                 # Check with MyApp.Blog.authorize/3 callback
+    |> run(fn action ->                    # Job only executed if authorization passes
       posts = MyApp.Blog.list_posts(action.user)
       render(conn, posts: posts)
-    end)                        # Return the job's result: a rendered conn
+    end)                                   # Return the job's result: a rendered conn
   end
 end
 ```
@@ -152,14 +172,14 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
 Testing is pretty straightforward – use the `Bodyguard` top-level API.
 
 ```elixir
-assert :ok == Bodyguard.permit(MyApp.Blog, :successful_action, user)
-assert {:error, :unauthorized} == Bodyguard.permit(MyApp.Blog, :failing_action, user)
+assert :ok == MyApp.Blog.permit(:successful_action, user)
+assert {:error, :unauthorized} == MyApp.Blog.permit(:failing_action, user)
 
-assert Bodyguard.permit(MyApp.Blog, :successful_action, user)
-refute Bodyguard.permit(MyApp.Blog, :failing_action, user)
+assert MyApp.Blog.permit?(:successful_action, user)
+refute MyApp.Blog.permit?(:failing_action, user)
 
 error = assert_raise Bodyguard.NotAuthorizedError, fun ->
-  Bodyguard.permit(MyApp.Blog, :failing_action, user)
+  MyApp.Blog.permit!(:failing_action, user)
 end
 assert %{status: 403, message: "not authorized"} = error
 ```
@@ -171,7 +191,7 @@ assert %{status: 403, message: "not authorized"} = error
 
 ## Schema Scopes
 
-Bodyguard also provides the `Bodyguard.Schema` behaviour to query which items a user can access. Implement it directly on schema modules.
+Bodyguard also provides the `Bodyguard.Schema` behaviour to filter out items a user shouldn't access. Implement it directly on schema modules.
 
 ```elixir
 defmodule MyApp.Blog.Post do
@@ -184,11 +204,11 @@ defmodule MyApp.Blog.Post do
 end
 ```
 
-To leverage scopes, the `Bodyguard.scope/3` helper function (not the callback!) can infer the type of a query and automatically defer to the appropriate callback.
+To leverage scopes, the `scope/3` helper function (not the callback!) can infer the type of a query and automatically defer to the appropriate callback.
 
 ```elixir
 defmodule MyApp.Blog do
-  import Bodyguard
+  use Bodyguard
 
   def list_user_posts(user) do
     Blog.Post
@@ -221,13 +241,11 @@ defmodule MyApp.ErrorView do
 end
 ```
 
-  3. Wire up a [fallback controller](#controllers) to render this view on authorization failures.
+  3. Wire up a [fallback controller](#controllers) to render this 403 view on authorization failures.
 
-  4. Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement the `authorize/3` callback.
+  4. Add `use Bodyguard` to contexts that require authorization, and implement `authorize/3` callbacks.
 
   5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement the `scope/3` callback.
-
-  6. (Optional) Edit `web.ex` and add `import Bodyguard` to controllers, views, channels, and anywhere else to take advantage of the top-level API.
 
 ## Alternatives
 
