@@ -24,8 +24,8 @@ defmodule MyApp.Blog do
 
   # Implement this callback:
   def authorize(:update_post, user, %{post: post}) do
-    # Return :ok to permit
-    # Return {:error, reason} to deny
+    # Return :ok or true to permit
+    # Return :error, {:error, reason}, or false to deny
   end
 end
 
@@ -39,8 +39,8 @@ end
 
 To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then define `authorize(action, user, params)` callbacks, which must return:
 
-* `:ok` to permit the action, or
-* `{:error, reason}` to deny the action (most commonly `{:error, :unauthorized}`)
+* `:ok` or `true` to permit the action
+* `:error`, `{:error, reason}`, or `false` to deny the action
 
 The `action` argument, an atom, might map one-to-one with the actual context function name, or it can be more broad (e.g. `:manage_post` or `:read_post`) to indicate a rule encompassing a wider range of actions.
 
@@ -49,18 +49,17 @@ defmodule MyApp.Blog do
   @behaviour Bodyguard.Policy
 
   # Admin users can do anything
-  def authorize(_, %Blog.User{role: :admin}, _), do: :ok
+  def authorize(_, %Blog.User{role: :admin}, _), do: true
 
   # Regular users can create posts
-  def authorize(:create_post, _, _), do: :ok
+  def authorize(:create_post, _, _), do: true
 
   # Regular users can modify their own posts
-  def authorize(action, %{id: user_id}, %{post: %{user_id: post_user_id}}) 
-    when action in [:update_post, :delete_post] 
-    and user_id == post_user_id, do: :ok
+  def authorize(action, %{id: user_id}, %{post: %{user_id: user_id}}) 
+    when action in [:update_post, :delete_post], do: true
 
   # Catch-all: deny everything else
-  def authorize(_, _, _), do: {:error, :unauthorized}
+  def authorize(_, _, _), do: false
 end
 ```
 

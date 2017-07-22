@@ -10,15 +10,22 @@ defmodule Bodyguard do
   @doc """
   Authorize a user's action.
 
-  Simply converts the `opts` to a `params` map and defers to the
-  `c:Bodyguard.Policy.authorize/3` callback on the specified `policy`.
-
   Returns `:ok` on success, and `{:error, reason}` on failure.
+
+  If `params` is a keyword list, it is converted to a map before passing down
+  to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
+  changed.
   """
-  @spec permit(policy :: module, user :: any, action :: atom, opts :: opts) :: Bodyguard.Policy.auth_result
-  def permit(policy, action, user, opts \\ []) do
-    params = Enum.into(opts, %{})
-    apply(policy, :authorize, [action, user, params])
+  @spec permit(policy :: module, user :: any, action :: atom, params :: any) :: Bodyguard.Policy.auth_result
+  def permit(policy, action, user, params \\ []) do
+    params = cond do
+      Keyword.keyword?(params) -> Enum.into(params, %{})
+      true -> params
+    end
+
+    policy
+    |> apply(:authorize, [action, user, params])
+    |> resolve_result
   end
 
   @doc """
@@ -114,4 +121,12 @@ defmodule Bodyguard do
     raise ArgumentError, "Cannot automatically determine the schema of
       #{inspect(unknown)} - specify the :schema option"
   end
+
+  # Coerce auth results
+  defp resolve_result(true), do: :ok
+  defp resolve_result(:ok), do: :ok
+  defp resolve_result(false), do: {:error, :unauthorized}
+  defp resolve_result(:error), do: {:error, :unauthorized}
+  defp resolve_result({:error, reason}), do: {:error, reason}
+  defp resolve_result(invalid), do: raise "Unexpected authorization result: #{inspect(invalid)}"
 end

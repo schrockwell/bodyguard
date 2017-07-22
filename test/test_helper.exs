@@ -19,6 +19,18 @@ defmodule TestContext do
     {:error, :unauthorized}
   end
 
+  def authorize(:ok_boolean, _user, _params) do
+    true
+  end
+
+  def authorize(:fail_boolean, _user, _params) do
+    false
+  end
+
+  def authorize(:error_boolean, _user, _params) do
+    :error
+  end
+
   def authorize(_action, _user, _params) do
     :ok
   end

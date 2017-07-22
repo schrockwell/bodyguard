@@ -11,7 +11,8 @@ defmodule Bodyguard.Policy do
         @behaviour Bodyguard.Policy
 
         def authorize(action, user, params) do
-          # Return :ok or {:error, reason}
+          # Return :ok or true to permit
+          # Return :error, {:error, reason}, or false to deny
         end
       end
 
@@ -36,18 +37,19 @@ defmodule Bodyguard.Policy do
 
   """
 
-  @type auth_result :: :ok | {:error, reason :: any}
+  @type auth_result :: :ok | :error | {:error, reason :: any} | true | false
 
   @doc """
   Callback to authorize a user's action.
 
+  To permit an action, return `:ok` or `true`. To deny, return `:error`,
+  `{:error, reason}`, or `false`.
+
   The `action` is whatever user-specified contextual action is being authorized.
   It bears no intrinsic relationship to a controller action, and instead should
   share a name with a particular function on the context.
-
-  To permit an action, return `:ok`. To deny, return `{:error, reason}`.
   """
-  @callback authorize(action :: atom, user :: any, params :: %{atom => any}) :: auth_result
+  @callback authorize(action :: atom, user :: any, params :: %{atom => any} | any) :: auth_result
 
   @doc false
   defmacro __using__(opts) do
