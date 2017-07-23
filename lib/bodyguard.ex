@@ -3,8 +3,30 @@ defmodule Bodyguard do
   Authorize actions at the boundary of a context
 
   Please see the [README](readme.html).
+
+  TODO: Add documentation for `use Bodyguard`
   """
-  
+
+  @doc false
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
+      use Bodyguard.Policy, opts
+      import Bodyguard, only: [scope: 3]
+
+      def permit(action, user, params \\ []) do
+        Bodyguard.permit(__MODULE__, action, user, params)
+      end
+
+      def permit?(action, user, params \\ []) do
+        Bodyguard.permit?(__MODULE__, action, user, params)
+      end
+
+      def permit!(action, user, params \\ []) do
+        Bodyguard.permit!(__MODULE__, action, user, params)
+      end
+    end
+  end
+
   @type opts :: keyword
 
   @doc """

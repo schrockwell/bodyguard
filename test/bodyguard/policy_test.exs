@@ -42,4 +42,19 @@ defmodule PolicyTest do
     assert :ok                     = Bodyguard.permit(TestDeferralContext, :succeed, user)
     assert {:error, :unauthorized} = Bodyguard.permit(TestDeferralContext, :fail, user)
   end
+
+  test "using the permit context helper directly", %{context: context, user: user} do
+    assert :ok = context.permit(:action, user)
+    assert {:error, :unauthorized} = context.permit(:fail, user)
+
+    assert context.permit?(:action, user)
+    refute context.permit?(:fail, user)
+
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      context.permit!(:fail, user)
+    end
+
+    assert :ok = TestDeferralContext.permit(:succeed, user)
+    assert {:error, :unauthorized} = TestDeferralContext.permit(:fail, user)
+  end
 end
