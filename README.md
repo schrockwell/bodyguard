@@ -2,7 +2,9 @@
 
 Bodyguard protects the context boundaries of your application. 💪
 
-Version 2.0 was designed from the ground-up to integrate nicely with Phoenix contexts. Authorization is contained completely within contexts so that the business logic it represents does not leak out. This keeps your contextual actions safe, and ensures consumers do not contain repetitive, error-prone authorization checks. 
+**NEW for v2.2: `use Bodyguard` for auth checks directly in contexts – see below**
+
+Version 2.0 was designed from the ground-up to integrate nicely with Phoenix contexts. Authorization is contained completely within contexts so that the business logic it represents does not leak out. This keeps your contextual actions secure and ensures consumers do not contain repetitive authorization checks. 
 
 To promote reuse and DRY up repetitive configuration, authorization can be constructed and executed in a composable way with `Bodyguard.Action`.
 
@@ -16,14 +18,14 @@ This is an all-new API, so refer to [the `1.x` branch](https://github.com/schroc
 
 ## Quick Example
 
-Define authorization rules directly in the context module, in this case `MyApp.Blog`:
+Define authorization rules directly in the context module:
 
 ```elixir
 # lib/my_app/blog.ex
 defmodule MyApp.Blog do
   use Bodyguard
 
-  # Bodyguard callback
+  # Bodyguard callback authorize/3
   def authorize(:update_post, user, post) do
     # Return :ok or true to permit
     # Return :error, {:error, reason}, or false to deny
@@ -33,8 +35,8 @@ defmodule MyApp.Blog do
   #   - {:ok, post} if successful
   #   - {:error, changeset} if operation fails
   #   - {:error, :unauthorized} if authorization fails
-  def update_post(user, post_params) do
-    post = MyApp.Repo.get!(MyApp.Blog.Post, post_params["id"])
+  def update_post(user, post_id, post_params) do
+    post = MyApp.Repo.get!(MyApp.Blog.Post, post_id)
     with :ok <- permit(:update_post, user, post) do  # <-- permit/3 helper function
       do_update_post(post, post_params)
     end
@@ -47,40 +49,28 @@ defmodule MyApp.Blog do
 end
 ```
 
-## Policies
+## Contexts
 
 Add `use Bodyguard` to a context, then define `authorize(action, user, params)` callbacks, which must return:
 
 * `:ok` or `true` to permit the action
 * `:error`, `{:error, reason}`, or `false` to deny the action
 
-**Don't use these callbacks directly** – instead, use the wrapper functions injected into the context: `permit/3`, `permit?/3`, and `permit!/3`.
+**Don't use these callbacks directly** – instead, use the three wrapper functions injected into the context: 
 
-The `action` argument, an atom, might map one-to-one with the actual context function name, or it can be more broad (e.g. `:manage_post` or `:read_post`) to indicate a rule encompassing a wider range of actions.
+* `permit/3` to get an `:ok` or `{:error, reason}`
+* `permit?/3` to get a boolean
+* `permit!/3` to get an `:ok` or raise `Bodyguard.NotAuthorizedError`
 
-The passed-in `params` can be any type. If it's a keyword list, then it's coerced into a map to make `authorize/3` pattern-matching more convenient.
+Some notes on the arguments:
 
-```elixir
-# lib/my_app/blog.ex
-defmodule MyApp.Blog do
-  use Bodyguard
+* `action` can be any atom - doesn't have to match the context function name
+* `user` can be any type - you can pass in a struct or even just a user ID
+* `params` can be any type - if it's a keyword list, it will be coerced into a map for `authorize/3`
 
-  # Admin users can do anything
-  def authorize(_, %Blog.User{role: :admin}, _), do: true
+### Separate Policy Module
 
-  # Regular users can create posts
-  def authorize(:create_post, _, _), do: true
-
-  # Regular users can modify their own posts (note the user_id pattern match)
-  def authorize(action, %{id: user_id}, %MyApp.Blog.Post{user_id: user_id}),
-    do: action in [:update_post, :delete_post]
-
-  # Catch-all: deny everything else
-  def authorize(_, _, _), do: false
-end
-```
-
-If you prefer a more structured approach, define a dedicated policy module outside of the context, and configure the context to `use` it with the `:policy` option:
+If you prefer a more structured approach, define a dedicated policy module outside of the context, and configure the context to use it with the `:policy` option:
 
 ```elixir
 # lib/my_app/blog.ex
@@ -96,15 +86,13 @@ defmodule MyApp.Blog.Policy do
 end
 ```
 
-For more info, see `Bodyguard.Policy` in the docs.
-
 ## Controllers
 
-Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures.
+Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures. The fallback controller should handle `{:error, :unauthorized}` and other errors returned by `authorize/3` callbacks.
 
-The fallback controller should handle any `{:error, reason}` results returned by `authorize/3` callbacks.
+If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and render a 404 in the fallback controller.
 
-Normally, authorization failure results in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller.
+See the section "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass the `current_user` directly to each controller action.
 
 ```elixir
 # lib/my_app/web/controllers/post_controller.ex
@@ -114,8 +102,7 @@ defmodule MyApp.Web.PostController do
   action_fallback MyApp.Web.FallbackController
 
   def index(conn, _) do
-    user = conn.assigns.current_user
-    with {:ok, posts} <- MyApp.Blog.list_posts(user) do
+    with {:ok, posts} <- MyApp.Blog.list_posts(conn.assigns.current_user) do
       render(conn, posts: posts)
     end
   end
@@ -132,8 +119,6 @@ defmodule MyApp.Web.FallbackController do
   end
 end
 ```
-
-See the section "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass in the `user` to each action.
 
 ## Composable Actions
 
@@ -169,7 +154,7 @@ There are many more options – see `Bodyguard.Action` in the docs for details.
 
 ## Testing
 
-Testing is pretty straightforward – use the `Bodyguard` top-level API.
+Testing is pretty straightforward – use the context's `permit/3` and friends:
 
 ```elixir
 assert :ok == MyApp.Blog.permit(:successful_action, user)
@@ -198,7 +183,7 @@ defmodule MyApp.Blog.Post do
   import Ecto.Query, only: [from: 2]
   @behaviour Bodyguard.Schema
 
-  def scope(query, user, _) do
+  def scope(query, user, _params) do
     from ms in query, where: ms.user_id == ^user.id
   end
 end
@@ -243,7 +228,7 @@ end
 
   3. Wire up a [fallback controller](#controllers) to render this 403 view on authorization failures.
 
-  4. Add `use Bodyguard` to contexts that require authorization, and implement `authorize/3` callbacks.
+  4. Add `use Bodyguard` to contexts that require authorization, implement `authorize/3` callbacks, and wrap authorized code in `permit/3` checks.
 
   5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement the `scope/3` callback.
 
