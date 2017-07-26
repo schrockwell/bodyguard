@@ -4,7 +4,7 @@ defmodule Bodyguard do
 
   Please see the [README](readme.html).
   """
-  
+
   @type opts :: keyword
 
   @doc """
@@ -16,7 +16,7 @@ defmodule Bodyguard do
   to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
   changed.
   """
-  @spec permit(policy :: module, user :: any, action :: atom, params :: any) :: Bodyguard.Policy.auth_result
+  @spec permit(policy :: module, action :: atom, user :: any, params :: any) :: Bodyguard.Policy.auth_result
   def permit(policy, action, user, params \\ []) do
     params = cond do
       Keyword.keyword?(params) -> Enum.into(params, %{})
@@ -35,7 +35,7 @@ defmodule Bodyguard do
   Returns `:ok` on success.
 
   ## Options
-  
+
   * `error_message` – a string to describe the error (default "not authorized")
   * `error_status` – the HTTP status code to raise with the error (default 403)
 
@@ -43,7 +43,7 @@ defmodule Bodyguard do
   `c:Bodyguard.Policy.authorize/3` callback.
   """
 
-  @spec permit!(policy :: module, user :: any, action :: atom, opts :: opts) :: :ok
+  @spec permit!(policy :: module, action :: atom, user :: any, opts :: opts) :: :ok
   def permit!(policy, action, user, opts \\ []) do
     opts = Enum.into(opts, %{})
     {error_message, opts} = Map.pop(opts, :error_message, "not authorized")
@@ -51,7 +51,7 @@ defmodule Bodyguard do
 
     case permit(policy, action, user, opts) do
       :ok -> :ok
-      error -> raise Bodyguard.NotAuthorizedError, 
+      error -> raise Bodyguard.NotAuthorizedError,
         message: error_message, status: error_status, reason: error
     end
   end
@@ -59,7 +59,7 @@ defmodule Bodyguard do
   @doc """
   The same as `permit/4`, but returns a boolean.
   """
-  @spec permit?(policy :: module, user :: any, action :: atom, opts :: opts) :: boolean
+  @spec permit?(policy :: module, action :: atom, user :: any, opts :: opts) :: boolean
   def permit?(policy, action, user, opts \\ []) do
     case permit(policy, action, user, opts) do
       :ok -> true
@@ -87,9 +87,9 @@ defmodule Bodyguard do
           |> Repo.all
         end
       end
-  
+
   #### Options
-  
+
   * `schema` - if the schema of the `query` cannot be determined, you must
     manually specify the schema here
 
@@ -100,7 +100,7 @@ defmodule Bodyguard do
   def scope(query, user, opts \\ []) do
     params = Enum.into(opts, %{})
     {schema, params} = Map.pop(params, :schema, resolve_schema(query))
-    
+
     apply(schema, :scope, [query, user, params])
   end
 
