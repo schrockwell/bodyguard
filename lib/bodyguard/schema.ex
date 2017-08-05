@@ -12,12 +12,10 @@ defmodule Bodyguard.Schema do
   Typically the callbacks are designed to be used by `Bodyguard.scope/3` and
   are not called directly.
 
-  If you want to use separate module for scoping, you can `use` it with the
-  `scope_with` option, which will define the `c:scope/3` callback wrapper for
-  you:
+  If you want to use separate module for scoping, you can use `defdelegate`:
 
       defmodule MyApp.MyModel.MySchema do
-        use Bodyguard.Schema, scope_with: Some.Other.Scope
+        defdelegate scope(query, user, params), to: Some.Other.Scope
       end
   """
 
@@ -45,6 +43,7 @@ defmodule Bodyguard.Schema do
       @behaviour Bodyguard.Schema
 
       if scope_with = Keyword.get(opts, :scope_with) do
+        IO.puts("DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Schema` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate scope(query, user, params), to: #{inspect(scope_with)}\n")
         defdelegate scope(query, user, params), to: scope_with
       end
     end

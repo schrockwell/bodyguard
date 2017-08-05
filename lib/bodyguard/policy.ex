@@ -28,11 +28,11 @@ defmodule Bodyguard.Policy do
 
       Bodyguard.permit!(MyApp.MyContext, :action_name, user, param: :value)
 
-  If you want to define the callbacks in another module, you can `use` this
-  module and it will create a `c:authorize/3` callback wrapper for you:
+  If you want to define the callbacks in another module, you can use
+  `defdelegate`:
 
       defmodule MyApp.MyContext do
-        use Bodyguard.Policy, policy: Some.Other.Policy
+        defdelegate authorize(action, user, params), to: Some.Other.Policy
       end
 
   """
@@ -57,6 +57,7 @@ defmodule Bodyguard.Policy do
       @behaviour Bodyguard.Policy
 
       if policy = Keyword.get(opts, :policy) do
+        IO.puts("DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{inspect(policy)}\n")
         defdelegate authorize(action, user, params), to: policy
       end
     end

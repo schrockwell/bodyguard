@@ -9,7 +9,7 @@ defmodule Bodyguard.Plug.Authorize do
   * `policy` *required* - the policy (or context) module
   * `action` *required* - the action to authorize
   * `user` - a 1-arity function which accepts the connection and returns a
-    user. If omitted, detaults `user` to `nil`
+    user. If omitted, defaults `user` to `nil`
   * `params` - params to pass to the authorization callbacks
   * `fallback` - a fallback controller or plug to handle authorization
     failure. If specified, the plug is called and then the pipeline is
