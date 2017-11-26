@@ -32,8 +32,15 @@ defmodule PolicyTest do
       Bodyguard.permit!(context, :fail, user)
     end
 
+    # Old syntax (using params)
     custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
       Bodyguard.permit!(context, :fail, user, error_message: "whoops", error_status: 500)
+    end
+    assert %{message: "whoops", status: 500} = custom_error
+
+    # New syntax (using opts)
+    custom_error = assert_raise Bodyguard.NotAuthorizedError, fn ->
+      Bodyguard.permit!(context, :fail, user, "params", error_message: "whoops", error_status: 500)
     end
     assert %{message: "whoops", status: 500} = custom_error
   end

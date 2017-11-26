@@ -2,7 +2,7 @@
 
 Bodyguard protects the context boundaries of your application. 💪
 
-Version 2.0 was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks are implemented directly on contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
+Version 2.x was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks are implemented directly on contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
 
 The `Bodyguard.Policy` behaviour is implemented with a single required callback. Additionally, the `Bodyguard.Schema` behaviour provides a convention for limiting query results per-user.
 
@@ -54,7 +54,7 @@ To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then defi
 
 Don't use these callbacks directly - instead, go through `Bodyguard.permit/4`. This will convert any keyword-list `params` into a map, and will coerce the callback result into a strict `:ok` or `{:error, reason}` result. The default failure `reason` is `:unauthorized` unless specified otherwise in the callback.
 
-Also provided are `Bodyguard.permit?/4` (returns a boolean) and `Bodyguard.permit!/4` (rasies `Bodyguard.NotAuthorizedError` on failure).
+Also provided are `Bodyguard.permit?/4` (returns a boolean) and `Bodyguard.permit!/5` (rasies `Bodyguard.NotAuthorizedError` on failure).
 
 ```elixir
 # lib/my_app/blog/blog.ex
@@ -138,7 +138,7 @@ defmodule MyApp.Blog.Post do
 end
 ```
 
-To leverage scopes, the `Bodyguard.scope/3` helper function (not the callback!) can infer the type of a query and automatically defer to the appropriate callback.
+To leverage scopes, the `Bodyguard.scope/4` helper function (not the callback!) can infer the type of a query and automatically defer to the appropriate callback.
 
 ```elixir
 # lib/my_app/blog/blog.ex

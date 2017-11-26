@@ -9,7 +9,7 @@ defmodule Bodyguard.Schema do
   What "access" means is up to you, and can be customized on a case-by-case
   basis via `params`.
 
-  Typically the callbacks are designed to be used by `Bodyguard.scope/3` and
+  Typically the callbacks are designed to be used by `Bodyguard.scope/4` and
   are not called directly.
 
   If you want to use separate module for scoping, you can use `defdelegate`:

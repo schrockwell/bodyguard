@@ -5,7 +5,7 @@ defmodule Bodyguard do
   Please see the [README](readme.html).
   """
 
-  @type opts :: keyword
+  @type opts :: keyword | %{optional(atom) => any}
 
   @doc """
   Authorize a user's action.
@@ -18,10 +18,7 @@ defmodule Bodyguard do
   """
   @spec permit(policy :: module, action :: atom, user :: any, params :: any) :: Bodyguard.Policy.auth_result
   def permit(policy, action, user, params \\ []) do
-    params = cond do
-      Keyword.keyword?(params) -> Enum.into(params, %{})
-      true -> params
-    end
+    params = try_to_mapify(params)
 
     policy
     |> apply(:authorize, [action, user, params])
@@ -34,22 +31,25 @@ defmodule Bodyguard do
 
   Returns `:ok` on success.
 
+  If `params` is a keyword list, it is converted to a map before passing down
+  to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
+  changed.
+
   ## Options
 
   * `error_message` – a string to describe the error (default "not authorized")
   * `error_status` – the HTTP status code to raise with the error (default 403)
-
-  The remaining `opts` are converted into a `params` map and passed to the
-  `c:Bodyguard.Policy.authorize/3` callback.
   """
 
-  @spec permit!(policy :: module, action :: atom, user :: any, opts :: opts) :: :ok
-  def permit!(policy, action, user, opts \\ []) do
+  @spec permit!(policy :: module, action :: atom, user :: any, params :: any, opts :: opts) :: :ok
+  def permit!(policy, action, user, params \\ [], opts \\ []) do
+    params = try_to_mapify(params)
     opts = Enum.into(opts, %{})
-    {error_message, opts} = Map.pop(opts, :error_message, "not authorized")
-    {error_status, opts} = Map.pop(opts, :error_status, 403)
 
-    case permit(policy, action, user, opts) do
+    {error_message, params} = get_option("Bodyguard.permit!/5", params, opts, :error_message, "not authorized")
+    {error_status, params} = get_option("Bodyguard.permit!/5", params, opts, :error_status, 403)
+
+    case permit(policy, action, user, params) do
       :ok -> :ok
       error -> raise Bodyguard.NotAuthorizedError,
         message: error_message, status: error_status, reason: error
@@ -59,9 +59,9 @@ defmodule Bodyguard do
   @doc """
   The same as `permit/4`, but returns a boolean.
   """
-  @spec permit?(policy :: module, action :: atom, user :: any, opts :: opts) :: boolean
-  def permit?(policy, action, user, opts \\ []) do
-    case permit(policy, action, user, opts) do
+  @spec permit?(policy :: module, action :: atom, user :: any, params :: any) :: boolean
+  def permit?(policy, action, user, params \\ []) do
+    case permit(policy, action, user, params) do
       :ok -> true
       _ -> false
     end
@@ -88,23 +88,47 @@ defmodule Bodyguard do
         end
       end
 
+  If `params` is a keyword list, it is converted to a map before passing down
+  to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
+  changed.
+
   #### Options
 
   * `schema` - if the schema of the `query` cannot be determined, you must
     manually specify the schema here
-
-  The remaining `opts` are converted to a `params` map and passed to the
-  `c:Bodyguard.Schema.scope/3` callback on that schema.
   """
-  @spec scope(query :: any, user :: any, opts :: keyword) :: any
-  def scope(query, user, opts \\ []) do
-    params = Enum.into(opts, %{})
-    {schema, params} = Map.pop(params, :schema, resolve_schema(query))
+  @spec scope(query :: any, user :: any, params :: any, opts :: opts) :: any
+  def scope(query, user, params \\ [], opts \\ []) do
+    params = try_to_mapify(params)
+    opts = Enum.into(opts, %{})
+
+    {schema, params} = get_option("Bodyguard.scope/4", params, opts, :schema, resolve_schema(query))
 
     apply(schema, :scope, [query, user, params])
   end
 
   # Private
+
+  # Attempts to convert a keyword list to a map
+  defp try_to_mapify(params) do
+    cond do
+      Keyword.keyword?(params) -> Enum.into(params, %{})
+      true -> params
+    end
+  end
+
+  # Pulls an option from the `params` argument if possible, falling back on
+  # the new `opts` argument. Returns {option_value, params}
+  defp get_option(name, params, opts, key, default) do
+    if is_map(params) and Map.has_key?(params, key) do
+      # Treat the new `params` as the old `opts`
+      IO.puts("DEPRECATION WARNING - Please pass the #{inspect(key)} option to the new `opts` argument in #{name}.")
+      Map.pop(params, key, default)
+    else
+      # Ignore `params` and just get it from `opts`
+      {Map.get(opts, key, default), params}
+    end
+  end
 
   # Ecto query (this feels dirty...)
   defp resolve_schema(%{__struct__: Ecto.Query, from: {_source, schema}})
