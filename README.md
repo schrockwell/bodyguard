@@ -176,7 +176,7 @@ assert %{status: 403, message: "not authorized"} = error
 ```elixir
 # mix.exs
 def deps do
-  [{:bodyguard, "~> 2.1"}]
+  [{:bodyguard, "~> 2.2"}]
 end
 ```
 
