@@ -63,4 +63,17 @@ defmodule PlugTest do
     refute ok_conn.assigns[:fallback_handled]
     refute ok_conn.halted
   end
+
+  test "Authorize plug with a custom action function", %{conn: conn, allow_user: allow_user} do
+    conn = Plug.Conn.assign(conn, :user, allow_user)
+    conn = Plug.Conn.assign(conn, :action, :any)
+    opts = Bodyguard.Plug.Authorize.init(policy: TestContext, action: &(&1.assigns.action), user: &(&1.assigns.user))
+    assert Bodyguard.Plug.Authorize.call(conn, opts)
+
+    conn = Plug.Conn.assign(conn, :action, :fail)
+    opts = Bodyguard.Plug.Authorize.init(policy: TestContext, action: &(&1.assigns.action), user: &(&1.assigns.user))
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      Bodyguard.Plug.Authorize.call(conn, opts)
+    end
+  end
 end

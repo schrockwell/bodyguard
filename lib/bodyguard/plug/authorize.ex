@@ -7,7 +7,8 @@ defmodule Bodyguard.Plug.Authorize do
   ## Options
   
   * `policy` *required* - the policy (or context) module
-  * `action` *required* - the action to authorize
+  * `action` *required* - the action to authorize, either an atom or a 1-arity
+    function that accepts a conn and returns the action
   * `user` - a 1-arity function which accepts the connection and returns a
     user. If omitted, defaults `user` to `nil`
   * `params` - params to pass to the authorization callbacks
@@ -36,7 +37,8 @@ defmodule Bodyguard.Plug.Authorize do
 
     if is_nil(policy), do: raise ArgumentError, "#{inspect(__MODULE__)} :policy option required"
 
-    if is_nil(action), do: raise ArgumentError, "#{inspect(__MODULE__)} :action option required"
+    if action == nil or not (is_atom(action) or is_function(action, 1)),
+      do: raise ArgumentError, "#{inspect(__MODULE__)} :action option required - must be an atom or 1-arity function that accepts conn and returns the action"
 
     unless is_nil(user_fun) or is_function(user_fun, 1),
       do: raise ArgumentError, "#{inspect(__MODULE__)} :user option must be a 1-arity function that accepts conn and returns a user"
@@ -54,11 +56,11 @@ defmodule Bodyguard.Plug.Authorize do
   end
 
   def call(conn, %{fallback: nil} = opts) do
-    Bodyguard.permit!(opts.policy, opts.action, call_user(conn, opts.user_fun), opts.params)
+    Bodyguard.permit!(opts.policy, get_action(conn, opts.action), get_user(conn, opts.user_fun), opts.params)
     conn
   end
   def call(conn, opts) do
-    case Bodyguard.permit(opts.policy, opts.action, call_user(conn, opts.user_fun), opts.params) do
+    case Bodyguard.permit(opts.policy, get_action(conn, opts.action), get_user(conn, opts.user_fun), opts.params) do
       :ok -> conn
       error ->
         conn
@@ -67,8 +69,13 @@ defmodule Bodyguard.Plug.Authorize do
     end
   end
 
-  defp call_user(_conn, nil), do: nil
-  defp call_user(conn, user_fun) do
+  defp get_user(conn, user_fun) when is_function(user_fun, 1) do
     user_fun.(conn)
   end
+  defp get_user(_conn, nil), do: nil
+
+  defp get_action(conn, action_fun) when is_function(action_fun, 1) do
+    action_fun.(conn)
+  end
+  defp get_action(_conn, action), do: action
 end
