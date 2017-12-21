@@ -16,7 +16,8 @@ defmodule Bodyguard do
   to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
   changed.
   """
-  @spec permit(policy :: module, action :: atom, user :: any, params :: any) :: Bodyguard.Policy.auth_result
+  @spec permit(policy :: module, action :: atom, user :: any, params :: any) ::
+          Bodyguard.Policy.auth_result()
   def permit(policy, action, user, params \\ []) do
     params = try_to_mapify(params)
 
@@ -46,13 +47,20 @@ defmodule Bodyguard do
     params = try_to_mapify(params)
     opts = Enum.into(opts, %{})
 
-    {error_message, params} = get_option("Bodyguard.permit!/5", params, opts, :error_message, "not authorized")
+    {error_message, params} =
+      get_option("Bodyguard.permit!/5", params, opts, :error_message, "not authorized")
+
     {error_status, params} = get_option("Bodyguard.permit!/5", params, opts, :error_status, 403)
 
     case permit(policy, action, user, params) do
-      :ok -> :ok
-      error -> raise Bodyguard.NotAuthorizedError,
-        message: error_message, status: error_status, reason: error
+      :ok ->
+        :ok
+
+      error ->
+        raise Bodyguard.NotAuthorizedError,
+          message: error_message,
+          status: error_status,
+          reason: error
     end
   end
 
@@ -102,7 +110,8 @@ defmodule Bodyguard do
     params = try_to_mapify(params)
     opts = Enum.into(opts, %{})
 
-    {schema, params} = get_option("Bodyguard.scope/4", params, opts, :schema, resolve_schema(query))
+    {schema, params} =
+      get_option("Bodyguard.scope/4", params, opts, :schema, resolve_schema(query))
 
     apply(schema, :scope, [query, user, params])
   end
@@ -122,7 +131,12 @@ defmodule Bodyguard do
   defp get_option(name, params, opts, key, default) do
     if is_map(params) and Map.has_key?(params, key) do
       # Treat the new `params` as the old `opts`
-      IO.puts("DEPRECATION WARNING - Please pass the #{inspect(key)} option to the new `opts` argument in #{name}.")
+      IO.puts(
+        "DEPRECATION WARNING - Please pass the #{inspect(key)} option to the new `opts` argument in #{
+          name
+        }."
+      )
+
       Map.pop(params, key, default)
     else
       # Ignore `params` and just get it from `opts`
@@ -132,7 +146,8 @@ defmodule Bodyguard do
 
   # Ecto query (this feels dirty...)
   defp resolve_schema(%{__struct__: Ecto.Query, from: {_source, schema}})
-    when is_atom(schema) and not is_nil(schema), do: schema
+       when is_atom(schema) and not is_nil(schema),
+       do: schema
 
   # List of structs
   defp resolve_schema([%{__struct__: schema} | _rest]), do: schema
@@ -152,5 +167,5 @@ defmodule Bodyguard do
   defp resolve_result(false), do: {:error, :unauthorized}
   defp resolve_result(:error), do: {:error, :unauthorized}
   defp resolve_result({:error, reason}), do: {:error, reason}
-  defp resolve_result(invalid), do: raise "Unexpected authorization result: #{inspect(invalid)}"
+  defp resolve_result(invalid), do: raise("Unexpected authorization result: #{inspect(invalid)}")
 end

@@ -43,7 +43,12 @@ defmodule Bodyguard.Schema do
       @behaviour Bodyguard.Schema
 
       if scope_with = Keyword.get(opts, :scope_with) do
-        IO.puts("DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Schema` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate scope(query, user, params), to: #{inspect(scope_with)}\n")
+        IO.puts(
+          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Schema` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate scope(query, user, params), to: #{
+            inspect(scope_with)
+          }\n"
+        )
+
         defdelegate scope(query, user, params), to: scope_with
       end
     end

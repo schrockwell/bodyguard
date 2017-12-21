@@ -29,10 +29,16 @@ defmodule SchemaTest do
   end
 
   test "scoping using helpers" do
-    assert :scoped_query == Bodyguard.scope(MySchema,         :user, param: :value)
-    assert :scoped_query == Bodyguard.scope([%MySchema{}],    :user, param: :value)
-    assert :scoped_query == Bodyguard.scope(
-      %{__struct__: Ecto.Query, from: {"my_schemas", MySchema}},     :user, param: :value)
+    assert :scoped_query == Bodyguard.scope(MySchema, :user, param: :value)
+    assert :scoped_query == Bodyguard.scope([%MySchema{}], :user, param: :value)
+
+    assert :scoped_query ==
+             Bodyguard.scope(
+               %{__struct__: Ecto.Query, from: {"my_schemas", MySchema}},
+               :user,
+               param: :value
+             )
+
     assert_raise ArgumentError, fn -> Bodyguard.scope("fail", :user, param: :value) end
   end
 
@@ -49,6 +55,7 @@ defmodule SchemaTest do
     assert :weird_scoped_query == Bodyguard.scope(MySchema, :user, schema: MyWeirdSchema)
 
     # New syntax
-    assert :weird_scoped_query == Bodyguard.scope(MySchema, :user, "params", schema: MyWeirdSchema)
+    assert :weird_scoped_query ==
+             Bodyguard.scope(MySchema, :user, "params", schema: MyWeirdSchema)
   end
 end

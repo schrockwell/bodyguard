@@ -2,9 +2,9 @@ defmodule TestContext do
   @behaviour Bodyguard.Policy
 
   defmodule User do
-    defstruct [allow: true]
+    defstruct allow: true
   end
-  
+
   def authorize(action, user, params \\ %{})
 
   def authorize(_, %User{allow: false}, _params) do

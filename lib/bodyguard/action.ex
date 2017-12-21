@@ -64,37 +64,35 @@ defmodule Bodyguard.Action do
 
   """
 
-  defstruct [
-    context: nil,
-    policy: nil,
-    user: nil,
-    name: nil,
-    auth_run?: false,
-    auth_result: nil,
-    authorized?: false,
-    job: nil,
-    fallback: nil,
-    assigns: %{},
-  ]
+  defstruct context: nil,
+            policy: nil,
+            user: nil,
+            name: nil,
+            auth_run?: false,
+            auth_result: nil,
+            authorized?: false,
+            job: nil,
+            fallback: nil,
+            assigns: %{}
 
   alias Bodyguard.Action
 
-  @type job          :: (action :: t -> any)
-  @type fallback     :: (action :: t -> any)
-  @type assigns      :: %{atom => any}
+  @type job :: (action :: t -> any)
+  @type fallback :: (action :: t -> any)
+  @type assigns :: %{atom => any}
 
   @type t :: %__MODULE__{
-    context:         module | nil,
-    policy:          module | nil,
-    name:            atom | nil,
-    user:            any,
-    auth_run?:       boolean,
-    auth_result:     Bodyguard.Policy.auth_result | nil,
-    authorized?:     boolean,
-    job:             job | nil,
-    fallback:        fallback | nil,
-    assigns:         assigns
-  }
+          context: module | nil,
+          policy: module | nil,
+          name: atom | nil,
+          user: any,
+          auth_run?: boolean,
+          auth_result: Bodyguard.Policy.auth_result() | nil,
+          authorized?: boolean,
+          job: job | nil,
+          fallback: fallback | nil,
+          assigns: assigns
+        }
 
   @doc """
   Initialize an Action.
@@ -193,19 +191,25 @@ defmodule Bodyguard.Action do
   See `Bodyguard.permit/3` for details.
   """
   @spec permit(action :: t, name :: atom, opts :: keyword | assigns) :: t
-  
+
   def permit(action, name, opts \\ [])
+
   def permit(%Action{policy: nil}, name, _opts) do
     raise RuntimeError, "Policy not specified for #{inspect(name)} action"
   end
+
   def permit(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
-    action # Don't attempt to auth again, since we already failed
+    # Don't attempt to auth again, since we already failed
+    action
   end
+
   def permit(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
+
     case Bodyguard.permit(action.policy, name, action.user, params) do
       :ok ->
         %{action | name: name, auth_run?: true, authorized?: true, auth_result: :ok}
+
       error ->
         %{action | name: name, auth_run?: true, authorized?: false, auth_result: error}
     end
@@ -217,12 +221,16 @@ defmodule Bodyguard.Action do
   @spec permit!(action :: t, name :: atom, opts :: keyword | assigns) :: t
 
   def permit!(action, name, opts \\ [])
+
   def permit!(%Action{policy: nil}, name, _opts) do
     raise RuntimeError, "Policy not specified for #{inspect(name)} action"
   end
+
   def permit!(%Action{auth_run?: true, authorized?: false} = action, _name, _opts) do
-    action # Don't attempt to auth again, since we already failed
+    # Don't attempt to auth again, since we already failed
+    action
   end
+
   def permit!(%Action{} = action, name, opts) do
     params = Enum.into(opts, action.assigns)
     Bodyguard.permit!(action.policy, name, action.user, params)
@@ -246,13 +254,19 @@ defmodule Bodyguard.Action do
   def run(%Action{job: nil}) do
     raise RuntimeError, "Job not specified for action"
   end
+
   def run(%Action{} = action) do
     cond do
-      action.authorized? -> # Success!
+      # Success!
+      action.authorized? ->
         action.job.(action)
-      action.fallback ->    # Failure, but with a fallback
+
+      # Failure, but with a fallback
+      action.fallback ->
         action.fallback.(action)
-      true ->               # Failure without a fallback
+
+      # Failure without a fallback
+      true ->
         action.auth_result
     end
   end
@@ -299,12 +313,15 @@ defmodule Bodyguard.Action do
   def run!(%Action{job: nil}) do
     raise RuntimeError, "Job not specified for action"
   end
+
   def run!(%Action{} = action) do
     if action.authorized? do
       action.job.(action)
     else
-      raise Bodyguard.NotAuthorizedError, message: "Not authorized", 
-        status: 403, reason: action.auth_result
+      raise Bodyguard.NotAuthorizedError,
+        message: "Not authorized",
+        status: 403,
+        reason: action.auth_result
     end
   end
 
