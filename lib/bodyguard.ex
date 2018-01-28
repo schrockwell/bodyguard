@@ -17,13 +17,13 @@ defmodule Bodyguard do
   changed.
   """
   @spec permit(policy :: module, action :: atom, user :: any, params :: any) ::
-          Bodyguard.Policy.auth_result()
+          :ok | {:error, any} | no_return()
   def permit(policy, action, user, params \\ []) do
     params = try_to_mapify(params)
 
     policy
     |> apply(:authorize, [action, user, params])
-    |> resolve_result
+    |> resolve_result()
   end
 
   @doc """
@@ -42,7 +42,8 @@ defmodule Bodyguard do
   * `error_status` – the HTTP status code to raise with the error (default 403)
   """
 
-  @spec permit!(policy :: module, action :: atom, user :: any, params :: any, opts :: opts) :: :ok
+  @spec permit!(policy :: module, action :: atom, user :: any, params :: any, opts :: opts) ::
+          :ok | no_return()
   def permit!(policy, action, user, params \\ [], opts \\ []) do
     params = try_to_mapify(params)
     opts = Enum.into(opts, %{})
