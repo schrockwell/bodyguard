@@ -122,6 +122,16 @@ Bodyguard doesn't make any assumptions about where authorization checks are perf
 
 * `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 
+```elixir
+# lib/my_app_web/controllers/post_controller.ex
+defmodule MyAppWeb.PostController do
+  use MyAppWeb, :controller
+
+  plug Bodyguard.Plug.Authorize, policy: MyApp.Blog.Policy, action: &action_name/1, user: &get_current_user/1
+  ...
+end
+```
+
 ## Schema Scopes
 
 Bodyguard also provides the `Bodyguard.Schema` behaviour to query which items a user can access. Implement it directly on schema modules.
