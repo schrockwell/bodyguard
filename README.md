@@ -69,7 +69,7 @@ defmodule MyApp.Blog do
   def authorize(:create_post, _, _), do: true
 
   # Regular users can modify their own posts
-  def authorize(action, %Blog.User{id: user_id}, %Blog.Post{user_id: user_id}})
+  def authorize(action, %Blog.User{id: user_id}, %Blog.Post{user_id: user_id})
     when action in [:update_post, :delete_post], do: true
 
   # Catch-all: deny everything else
