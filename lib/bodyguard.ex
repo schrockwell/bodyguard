@@ -145,8 +145,13 @@ defmodule Bodyguard do
     end
   end
 
-  # Ecto query (this feels dirty...)
+  # Ecto 2 query (this feels dirty...)
   defp resolve_schema(%{__struct__: Ecto.Query, from: {_source, schema}})
+       when is_atom(schema) and not is_nil(schema),
+       do: schema
+       
+  # Ecto 3 query (this feels dirty...)
+  defp resolve_schema(%{__struct__: Ecto.Query, from: %{source: {_source, schema}}})
        when is_atom(schema) and not is_nil(schema),
        do: schema
 
