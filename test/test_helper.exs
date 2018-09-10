@@ -23,6 +23,10 @@ defmodule TestContext do
     true
   end
 
+  def authorize(:ok_with_resource, _user, _params) do
+    {:ok, %{id: 1, name: "foo"}}
+  end
+
   def authorize(:fail_boolean, _user, _params) do
     false
   end

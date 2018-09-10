@@ -14,6 +14,7 @@ defmodule PolicyTest do
   test "authorizing via helper", %{context: context, user: user} do
     assert :ok = Bodyguard.permit(context, :action, user)
     assert :ok = Bodyguard.permit(context, :ok_boolean, user)
+    assert {:ok, resource} = Bodyguard.permit(context, :ok_with_resource, user)    
     assert {:error, :unauthorized} = Bodyguard.permit(context, :fail, user)
 
     assert {:error, %{key: :value}} =

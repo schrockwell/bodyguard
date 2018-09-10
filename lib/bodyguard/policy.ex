@@ -11,7 +11,7 @@ defmodule Bodyguard.Policy do
         @behaviour Bodyguard.Policy
 
         def authorize(action, user, params) do
-          # Return :ok or true to permit
+          # Return :ok {:ok, resource}, or true to permit
           # Return :error, {:error, reason}, or false to deny
         end
       end
@@ -37,12 +37,12 @@ defmodule Bodyguard.Policy do
 
   """
 
-  @type auth_result :: :ok | :error | {:error, reason :: any} | true | false
+  @type auth_result :: :ok | {:ok, resource :: any} | :error | {:error, reason :: any} | true | false
 
   @doc """
   Callback to authorize a user's action.
 
-  To permit an action, return `:ok` or `true`. To deny, return `:error`,
+  To permit an action, return `:ok`, `{:ok, resource}`, or `true`. To deny, return `:error`,
   `{:error, reason}`, or `false`.
 
   The `action` is whatever user-specified contextual action is being authorized.
