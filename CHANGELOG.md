@@ -7,6 +7,10 @@
 
 # Bodyguard Changelog
 
+## v2.2.3
+
+* **Fix:** Adding support for Ecto 3 queries
+
 ## v2.2.2
 
 * **Fix:** Fixing typespecs #43
