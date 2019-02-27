@@ -118,4 +118,31 @@ defmodule PlugTest do
       Bodyguard.Plug.Authorize.call(conn, opts)
     end
   end
+
+  test "Authorize plug with a custom params function", %{conn: conn} do
+    conn = Plug.Conn.assign(conn, :params, %{"id" => 1})
+    conn = Plug.Conn.assign(conn, :action, :param_fun_pass)
+
+    opts =
+      Bodyguard.Plug.Authorize.init(
+        policy: TestContext,
+        action: & &1.assigns.action,
+        params: & &1.assigns.params
+      )
+
+    assert Bodyguard.Plug.Authorize.call(conn, opts)
+
+    conn = Plug.Conn.assign(conn, :action, :param_fun_fail)
+
+    opts =
+      Bodyguard.Plug.Authorize.init(
+        policy: TestContext,
+        action: & &1.assigns.action,
+        params: & &1.assigns.params
+      )
+
+    assert_raise Bodyguard.NotAuthorizedError, fn ->
+      Bodyguard.Plug.Authorize.call(conn, opts)
+    end
+  end
 end
