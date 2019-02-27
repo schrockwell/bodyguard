@@ -15,7 +15,7 @@ defmodule TestContext do
     id != 1
   end
 
-  def authorize(param_fun_pass, _, %{"id" => id}) do
+  def authorize(:param_fun_pass, _, %{"id" => id}) do
     id == 1
   end
 
