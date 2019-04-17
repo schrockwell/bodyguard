@@ -210,6 +210,12 @@ Not what you're looking for?
 * [Canada](https://github.com/jarednorman/canada)
 * [Canary](https://github.com/cpjk/canary)
 
+## Community
+
+Join our communities!
+
+- [Slack](https://elixir-lang.slack.com/messages/CHMTNPSEN/)
+
 ## License
 
 MIT License, Copyright (c) 2017 Rockwell Schrock
