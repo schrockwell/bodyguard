@@ -4,7 +4,7 @@ defmodule Bodyguard.Mixfile do
   def project do
     [
       app: :bodyguard,
-      version: "2.2.3",
+      version: "2.2.4",
       elixir: "~> 1.3",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,

@@ -7,6 +7,11 @@
 
 # Bodyguard Changelog
 
+
+## v2.2.4
+
+* **Fix:** #58 Replacing deprecated Phoenix render function
+
 ## v2.2.3
 
 * **Fix:** Adding support for Ecto 3 queries
