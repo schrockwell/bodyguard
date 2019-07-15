@@ -109,7 +109,8 @@ defmodule MyAppWeb.FallbackController do
   def call(conn, {:error, :unauthorized}) do
     conn
     |> put_status(:forbidden)
-    |> render(MyAppWeb.ErrorView, :"403")
+    |> put_view(MyAppWeb.ErrorView)
+    |> render(:"403")
   end
 end
 ```
