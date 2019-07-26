@@ -7,6 +7,11 @@
 
 # Bodyguard Changelog
 
+## v2.3.0
+
+* **Addition:** Adding ability to specify function for plug's `:params` option  
+* **Addition:** Adding `:default_error` config option (defaults to `:unauthorized`)
+* **Fix:** Conforming to `init/1` return typespec for older versions of Plug
 
 ## v2.2.4
 

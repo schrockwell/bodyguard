@@ -21,7 +21,9 @@ defmodule Bodyguard.Mixfile do
     ]
   end
 
-  def application, do: []
+  def application do
+    [env: [default_error: :unauthorized]]
+  end
 
   defp deps do
     [{:plug, "~> 1.0"}, {:ex_doc, "~> 0.19", only: :dev}]

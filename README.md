@@ -163,6 +163,15 @@ defmodule MyApp.Blog do
 end
 ```
 
+## Configuration
+
+Here is the default library config.
+
+```elixir
+config :bodyguard,
+  default_error: :unauthorized # The second element of the {:error, reason} tuple returned on auth failure
+```
+
 ## Testing
 
 Testing is pretty straightforward – use the `Bodyguard` top-level API.

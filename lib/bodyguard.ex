@@ -149,7 +149,7 @@ defmodule Bodyguard do
   defp resolve_schema(%{__struct__: Ecto.Query, from: {_source, schema}})
        when is_atom(schema) and not is_nil(schema),
        do: schema
-       
+
   # Ecto 3 query (this feels dirty...)
   defp resolve_schema(%{__struct__: Ecto.Query, from: %{source: {_source, schema}}})
        when is_atom(schema) and not is_nil(schema),
@@ -167,11 +167,13 @@ defmodule Bodyguard do
       #{inspect(unknown)} - specify the :schema option"
   end
 
+  @default_error Application.get_env(:bodyguard, :default_error, :unauthorized)
+
   # Coerce auth results
   defp resolve_result(true), do: :ok
   defp resolve_result(:ok), do: :ok
-  defp resolve_result(false), do: {:error, :unauthorized}
-  defp resolve_result(:error), do: {:error, :unauthorized}
+  defp resolve_result(false), do: {:error, @default_error}
+  defp resolve_result(:error), do: {:error, @default_error}
   defp resolve_result({:error, reason}), do: {:error, reason}
   defp resolve_result(invalid), do: raise("Unexpected authorization result: #{inspect(invalid)}")
 end
