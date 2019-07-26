@@ -11,7 +11,7 @@ defmodule Bodyguard.Plug.Authorize do
     function that accepts a conn and returns the action
   * `user` - a 1-arity function which accepts the connection and returns a
     user. If omitted, defaults `user` to `nil`
-  * `params` - params to pass to the authorization callbacks
+  * `params` - params to pass to the authorization callbacks or a 1-arity function which accepts the connection
   * `fallback` - a fallback controller or plug to handle authorization
     failure. If specified, the plug is called and then the pipeline is
     `halt`ed. If not specified, then `Bodyguard.NotAuthorizedError` raises
@@ -20,12 +20,17 @@ defmodule Bodyguard.Plug.Authorize do
   ## Examples
 
       # Raise on failure
-      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts, 
-        user: &get_current_user/1 
+      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
+        user: &get_current_user/1
 
       # Fallback on failure
-      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts, 
+      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
         user: &get_current_user/1, fallback: MyApp.FallbackController
+
+      # Params as a function
+      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
+        params: &get_params/1
+
   """
 
   def init(opts \\ []) do
@@ -51,6 +56,13 @@ defmodule Bodyguard.Plug.Authorize do
           "#{inspect(__MODULE__)} :user option must be a 1-arity function that accepts conn and returns a user"
         )
 
+    if is_function(params) and not is_function(params, 1),
+      do:
+        raise(
+          ArgumentError,
+          "#{inspect(__MODULE__)} :params option as a function must be a 1-arity function that accepts conn"
+        )
+
     unless is_nil(fallback) or is_atom(fallback),
       do: raise(ArgumentError, "#{inspect(__MODULE__)} :fallback option must be a plug module")
 
@@ -68,7 +80,7 @@ defmodule Bodyguard.Plug.Authorize do
       opts.policy,
       get_action(conn, opts.action),
       get_user(conn, opts.user_fun),
-      opts.params
+      get_params(conn, opts.params)
     )
 
     conn
@@ -79,7 +91,7 @@ defmodule Bodyguard.Plug.Authorize do
            opts.policy,
            get_action(conn, opts.action),
            get_user(conn, opts.user_fun),
-           opts.params
+           get_params(conn, opts.params)
          ) do
       :ok ->
         conn
@@ -102,4 +114,10 @@ defmodule Bodyguard.Plug.Authorize do
   end
 
   defp get_action(_conn, action), do: action
+
+  defp get_params(conn, params_fun) when is_function(params_fun, 1) do
+    params_fun.(conn)
+  end
+
+  defp get_params(_conn, params), do: params
 end

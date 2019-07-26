@@ -11,6 +11,14 @@ defmodule TestContext do
     {:error, :unauthorized}
   end
 
+  def authorize(:param_fun_fail, _, %{"id" => id}) do
+    id != 1
+  end
+
+  def authorize(:param_fun_pass, _, %{"id" => id}) do
+    id == 1
+  end
+
   def authorize(:fail_with_params, _user, params) do
     {:error, params}
   end
