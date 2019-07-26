@@ -66,39 +66,41 @@ defmodule Bodyguard.Plug.Authorize do
     unless is_nil(fallback) or is_atom(fallback),
       do: raise(ArgumentError, "#{inspect(__MODULE__)} :fallback option must be a plug module")
 
-    %{
-      policy: policy,
-      action: action,
-      user_fun: user_fun,
-      params: params,
-      fallback: fallback
-    }
+    # Plug 1.0 through 1.3.2 doesn't support returning maps from init/1
+    # See https://github.com/schrockwell/bodyguard/issues/52
+    {fallback,
+     [
+       policy: policy,
+       action: action,
+       user_fun: user_fun,
+       params: params
+     ]}
   end
 
-  def call(conn, %{fallback: nil} = opts) do
+  def call(conn, {nil, opts}) do
     Bodyguard.permit!(
-      opts.policy,
-      get_action(conn, opts.action),
-      get_user(conn, opts.user_fun),
-      get_params(conn, opts.params)
+      opts[:policy],
+      get_action(conn, opts[:action]),
+      get_user(conn, opts[:user_fun]),
+      get_params(conn, opts[:params])
     )
 
     conn
   end
 
-  def call(conn, opts) do
+  def call(conn, {fallback, opts}) do
     case Bodyguard.permit(
-           opts.policy,
-           get_action(conn, opts.action),
-           get_user(conn, opts.user_fun),
-           get_params(conn, opts.params)
+           opts[:policy],
+           get_action(conn, opts[:action]),
+           get_user(conn, opts[:user_fun]),
+           get_params(conn, opts[:params])
          ) do
       :ok ->
         conn
 
       error ->
         conn
-        |> opts.fallback.call(error)
+        |> fallback.call(error)
         |> Plug.Conn.halt()
     end
   end
