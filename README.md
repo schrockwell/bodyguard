@@ -2,11 +2,11 @@
 
 Bodyguard protects the context boundaries of your application. 💪
 
-Version 2.x was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks are implemented directly on contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
+Version 2 was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks are implemented directly on contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
 
 The `Bodyguard.Policy` behaviour is implemented with a single required callback. Additionally, the `Bodyguard.Schema` behaviour provides a convention for limiting query results per-user.
 
-This is an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) (still maintained!) if you are using versions prior to 2.0.
+This is an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) for the earlier readme.
 
 * [Docs](https://hexdocs.pm/bodyguard/) ← complete documentation
 * [Hex](https://hex.pm/packages/bodyguard)
@@ -21,10 +21,12 @@ Define authorization rules directly in the context module:
 defmodule MyApp.Blog do
   @behaviour Bodyguard.Policy
 
-  # Bodyguard callback
   def authorize(:update_post, user, post) do
-    # Return :ok or true to permit
-    # Return :error, {:error, reason}, or false to deny
+    cond do
+      user.role == :admin -> :ok
+      user.id == post.user_id -> :ok
+      true -> :error
+    end
   end
 end
 
@@ -123,15 +125,37 @@ Bodyguard doesn't make any assumptions about where authorization checks are perf
 
 * `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 
+This plug's config utilizes callback functions called getters, which are 1-arity functions that
+accept the `conn` and return the appropriate value.
+
 ```elixir
 # lib/my_app_web/controllers/post_controller.ex
 defmodule MyAppWeb.PostController do
   use MyAppWeb, :controller
 
-  plug Bodyguard.Plug.Authorize, policy: MyApp.Blog.Policy, action: &action_name/1, user: &get_current_user/1
-  ...
+  # Fetch the post and put into conn assigns
+  plug :get_post when action in [:show]
+
+  # Do the check
+  plug Bodyguard.Plug.Authorize,
+    policy: MyApp.Blog.Policy,
+    action: {Phoenix.Controller, :action_name},
+    user: {MyApp.Authentication, :current_user},
+    params: & &1.assigns.post
+
+  def show(conn, _) do
+    # Already assigned and authorized
+    render(conn, "show.html")
+  end
+
+  defp get_post(conn, _) do
+    post = MyApp.Posts.get_post!(conn.params["id"])
+    assign(conn, :post, post)
+  end
 end
 ```
+
+See the docs for more information about configuring application-wide defaults for the plug.
 
 ## Schema Scopes
 
@@ -196,7 +220,7 @@ assert %{status: 403, message: "not authorized"} = error
 ```elixir
 # mix.exs
 def deps do
-  [{:bodyguard, "~> 2.2"}]
+  [{:bodyguard, "~> 2.4"}]
 end
 ```
 
