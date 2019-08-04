@@ -13,16 +13,16 @@ defmodule Bodyguard.Action do
 
   #### Fields
 
-  * `context` – Context for the action
-  * `policy` – Implementation of `Bodyguard.Policy` behaviour; defaults to the `context`
-  * `user` – The user to authorize
-  * `name` – The name of the authorized action
-  * `auth_run?` – If an authorization check has been performed
-  * `auth_result` – Result of the authorization check
-  * `authorized?` – If authorization has succeeded (default `false`)
-  * `job` – Function to execute if authorization passes; signature `job(action)`
-  * `fallback` – Function to execute if authorization fails; signature `fallback(action)`
-  * `assigns` – Generic parameters along for the ride
+  * `:context` – Context for the action
+  * `:policy` – Implementation of `Bodyguard.Policy` behaviour; defaults to the `:context`
+  * `:user` – The user to authorize
+  * `:name` – The name of the authorized action
+  * `:auth_run?` – If an authorization check has been performed
+  * `:auth_result` – Result of the authorization check
+  * `:authorized?` – If authorization has succeeded (default `false`)
+  * `:job` – Function to execute if authorization passes; signature `job(action)`
+  * `:fallback` – Function to execute if authorization fails; signature `fallback(action)`
+  * `:assigns` – Generic parameters along for the ride
 
   #### Controller Example
 
@@ -146,7 +146,8 @@ defmodule Bodyguard.Action do
   Change the fallback handler.
   """
   @spec put_fallback(action :: t, fallback :: fallback | nil) :: t
-  def put_fallback(%Action{} = action, fallback) when is_function(fallback, 1) or is_nil(fallback) do
+  def put_fallback(%Action{} = action, fallback)
+      when is_function(fallback, 1) or is_nil(fallback) do
     %{action | fallback: fallback}
   end
 
@@ -297,7 +298,8 @@ defmodule Bodyguard.Action do
   If unauthorized, the fallback is run and its value returned.
   """
   @spec run(action :: t, job :: job, fallback :: fallback) :: any
-  def run(%Action{} = action, job, fallback) when is_function(job, 1) and is_function(fallback, 1) do
+  def run(%Action{} = action, job, fallback)
+      when is_function(job, 1) and is_function(fallback, 1) do
     action
     |> put_job(job)
     |> put_fallback(fallback)

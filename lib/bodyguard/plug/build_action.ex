@@ -1,5 +1,6 @@
 defmodule Bodyguard.Plug.BuildAction do
   @behaviour Plug
+  import Bodyguard.Utilities
 
   @moduledoc """
   Construct an Action on the connection.
@@ -15,8 +16,8 @@ defmodule Bodyguard.Plug.BuildAction do
   * `policy` - policy module (defaults to context module)
   * `fallback` - fallback function
   * `assigns` - action assigns
-  * `user` – can be a 1-arity function that accepts the connection and returns
-    the user
+  * `user` – can be a 1-arity function (or `{module, function_name}`) that accepts the connection
+    and returns the user
   * `key` - the assign to set. Defaults to `:action`
   """
 
@@ -32,7 +33,7 @@ defmodule Bodyguard.Plug.BuildAction do
     assigns = Keyword.get(opts, :assigns, %{})
     key = Keyword.get(opts, :key, :action)
 
-    user = if is_function(user, 1), do: user.(conn), else: user
+    user = resolve_param_or_callback(conn, user)
 
     action =
       act(context)
