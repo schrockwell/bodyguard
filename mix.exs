@@ -4,7 +4,7 @@ defmodule Bodyguard.Mixfile do
   def project do
     [
       app: :bodyguard,
-      version: "2.3.0",
+      version: "2.4.0",
       elixir: "~> 1.3",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
@@ -26,7 +26,7 @@ defmodule Bodyguard.Mixfile do
   end
 
   defp deps do
-    [{:plug, "~> 1.0"}, {:ex_doc, "~> 0.19", only: :dev}]
+    [{:plug, "~> 1.0"}, {:ex_doc, "~> 0.21", only: :dev}]
   end
 
   defp description do
