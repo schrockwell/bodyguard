@@ -1,5 +1,5 @@
 defmodule ActionTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Bodyguard.Action
   alias Bodyguard.Action

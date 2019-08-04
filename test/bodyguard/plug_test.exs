@@ -1,5 +1,5 @@
 defmodule PlugTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Bodyguard.Action
   alias Bodyguard.Action
 
@@ -15,6 +15,10 @@ defmodule PlugTest do
     plug_opts = Bodyguard.Plug.BuildAction.init(opts)
     Bodyguard.Plug.BuildAction.call(conn, plug_opts)
   end
+
+  def get_action(conn), do: conn.assigns.action
+  def get_user(conn), do: conn.assigns.user
+  def get_params(conn), do: conn.assigns.params
 
   test "putting an updating an action", %{conn: conn} do
     conn = Bodyguard.Plug.put_action(conn, act(TestContext))
@@ -96,53 +100,71 @@ defmodule PlugTest do
     conn = Plug.Conn.assign(conn, :user, allow_user)
     conn = Plug.Conn.assign(conn, :action, :any)
 
-    opts =
-      Bodyguard.Plug.Authorize.init(
-        policy: TestContext,
-        action: & &1.assigns.action,
-        user: & &1.assigns.user
-      )
+    inits = [
+      # function/1 variant
+      [policy: TestContext, action: & &1.assigns.action, user: & &1.assigns.user],
 
-    assert Bodyguard.Plug.Authorize.call(conn, opts)
+      # {module, fun} variant
+      [policy: TestContext, action: {__MODULE__, :get_action}, user: {__MODULE__, :get_user}]
+    ]
+
+    for init <- inits do
+      opts = Bodyguard.Plug.Authorize.init(init)
+      assert Bodyguard.Plug.Authorize.call(conn, opts)
+    end
 
     conn = Plug.Conn.assign(conn, :action, :fail)
 
-    opts =
-      Bodyguard.Plug.Authorize.init(
-        policy: TestContext,
-        action: & &1.assigns.action,
-        user: & &1.assigns.user
-      )
+    for init <- inits do
+      opts = Bodyguard.Plug.Authorize.init(init)
 
-    assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.Plug.Authorize.call(conn, opts)
+      assert_raise Bodyguard.NotAuthorizedError, fn ->
+        Bodyguard.Plug.Authorize.call(conn, opts)
+      end
     end
   end
 
   test "Authorize plug with a custom params function", %{conn: conn} do
-    conn = Plug.Conn.assign(conn, :params, %{"id" => 1})
-    conn = Plug.Conn.assign(conn, :action, :param_fun_pass)
+    conn =
+      conn
+      |> Plug.Conn.assign(:params, %{"id" => 1})
+      |> Plug.Conn.assign(:action, :param_fun_pass)
 
-    opts =
-      Bodyguard.Plug.Authorize.init(
-        policy: TestContext,
-        action: & &1.assigns.action,
-        params: & &1.assigns.params
-      )
+    inits = [
+      [policy: TestContext, action: & &1.assigns.action, params: & &1.assigns.params],
+      [policy: TestContext, action: {__MODULE__, :get_action}, params: {__MODULE__, :get_params}]
+    ]
 
-    assert Bodyguard.Plug.Authorize.call(conn, opts)
+    for init <- inits do
+      opts = Bodyguard.Plug.Authorize.init(init)
+      assert Bodyguard.Plug.Authorize.call(conn, opts)
+    end
 
     conn = Plug.Conn.assign(conn, :action, :param_fun_fail)
 
-    opts =
-      Bodyguard.Plug.Authorize.init(
-        policy: TestContext,
-        action: & &1.assigns.action,
-        params: & &1.assigns.params
-      )
+    for init <- inits do
+      opts = Bodyguard.Plug.Authorize.init(init)
 
-    assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.Plug.Authorize.call(conn, opts)
+      assert_raise Bodyguard.NotAuthorizedError, fn ->
+        Bodyguard.Plug.Authorize.call(conn, opts)
+      end
     end
+  end
+
+  test "Authorize plug with default options", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Conn.assign(:params, %{"id" => 1})
+      |> Plug.Conn.assign(:action, :any)
+
+    Application.put_env(:bodyguard, Bodyguard.Plug.Authorize,
+      action: {__MODULE__, :get_action},
+      params: {__MODULE__, :get_params}
+    )
+
+    opts = Bodyguard.Plug.Authorize.init(policy: TestContext)
+    assert Bodyguard.Plug.Authorize.call(conn, opts)
+
+    Application.delete_env(:bodyguard, Bodyguard.Plug.Authorize)
   end
 end

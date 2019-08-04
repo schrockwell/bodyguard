@@ -1,5 +1,5 @@
 defmodule SchemaTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   defmodule MySchema do
     use Bodyguard.Schema

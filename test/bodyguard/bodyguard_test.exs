@@ -1,4 +1,4 @@
 defmodule BodyguardTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   doctest Bodyguard
 end

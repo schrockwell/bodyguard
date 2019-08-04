@@ -6,61 +6,86 @@ defmodule Bodyguard.Plug.Authorize do
 
   ## Options
 
-  * `policy` *required* - the policy (or context) module
-  * `action` *required* - the action to authorize, either an atom or a 1-arity
-    function that accepts a conn and returns the action
-  * `user` - a 1-arity function which accepts the connection and returns a
-    user. If omitted, defaults `user` to `nil`
-  * `params` - params to pass to the authorization callbacks or a 1-arity function which accepts the connection
-  * `fallback` - a fallback controller or plug to handle authorization
+  * `:policy` *required* - the policy (or context) module
+  * `:action` *required* - the action, or a getter
+  * `:user` - the user getter
+  * `:params` - the params, or a getter, to pass to the authorization callbacks
+  * `:fallback` - a fallback controller or plug to handle authorization
     failure. If specified, the plug is called and then the pipeline is
     `halt`ed. If not specified, then `Bodyguard.NotAuthorizedError` raises
     directly to the router.
 
+  ### Option Getters
+
+  The options `:action`, `:user`, and `:params` can accept getter functions that are either:
+
+  * an anonymous 1-arity function that accepts the `conn` and returns a value
+  * a `{module, function_name}` tuple specifying an existing function with that same signature
+
+  ### Default Plug Options
+
+  Application-wide defaults for the above options can be specified in the application config. For
+  example, if you're using Phoenix with Pow for authentication, you might want to specify:
+
+      config :bodyguard, Bodyguard.Plug.Authorize,
+        action: {Phoenix.Controller, :action_name},
+        user: {Pow.Plug, :current_user}
+
   ## Examples
 
       # Raise on failure
-      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
-        user: &get_current_user/1
+      plug Bodyguard.Plug.Authorize,
+        policy: MyApp.Blog,
+        action: &action_name/1,
+        user: {MyApp.Authentication, :current_user}
 
       # Fallback on failure
-      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
-        user: &get_current_user/1, fallback: MyApp.FallbackController
+      plug Bodyguard.Plug.Authorize,
+        policy: MyApp.Blog,
+        action: &action_name/1,
+        user: {MyApp.Authentication, :current_user},
+        fallback: MyAppWeb.FallbackController
 
       # Params as a function
-      plug Bodyguard.Plug.Authorize, policy: MyApp.Blog, action: :update_posts,
+      plug Bodyguard.Plug.Authorize,
+        policy: MyApp.Blog,
+        action: &action_name/1,
+        user: {MyApp.Authentication, :current_user},
         params: &get_params/1
 
   """
 
+  def valid_getter?(fun) when is_function(fun, 1), do: true
+  def valid_getter?({module, fun}) when is_atom(module) and is_atom(fun), do: true
+  def valid_getter?(_), do: false
+
   def init(opts \\ []) do
+    default_opts = Application.get_env(:bodyguard, __MODULE__, [])
+    opts = Keyword.merge(default_opts, opts)
+
     policy = Keyword.get(opts, :policy)
     action = Keyword.get(opts, :action)
-    user_fun = Keyword.get(opts, :user)
+    user = Keyword.get(opts, :user)
     params = Keyword.get(opts, :params, [])
     fallback = Keyword.get(opts, :fallback)
 
+    # Policy must be defined
     if is_nil(policy), do: raise(ArgumentError, "#{inspect(__MODULE__)} :policy option required")
 
-    if action == nil or not (is_atom(action) or is_function(action, 1)),
+    # Action must be defined
+    if is_nil(action),
       do:
         raise(
           ArgumentError,
-          "#{inspect(__MODULE__)} :action option required - must be an atom or 1-arity function that accepts conn and returns the action"
+          "#{inspect(__MODULE__)} :action option is required"
         )
 
-    unless is_nil(user_fun) or is_function(user_fun, 1),
+    # User can be nil or a getter function
+    unless is_nil(user) || valid_getter?(user),
       do:
         raise(
           ArgumentError,
-          "#{inspect(__MODULE__)} :user option must be a 1-arity function that accepts conn and returns a user"
-        )
-
-    if is_function(params) and not is_function(params, 1),
-      do:
-        raise(
-          ArgumentError,
-          "#{inspect(__MODULE__)} :params option as a function must be a 1-arity function that accepts conn"
+          "#{inspect(__MODULE__)} :user option #{inspect(user)} is invalid"
         )
 
     unless is_nil(fallback) or is_atom(fallback),
@@ -72,7 +97,7 @@ defmodule Bodyguard.Plug.Authorize do
      [
        policy: policy,
        action: action,
-       user_fun: user_fun,
+       user: user,
        params: params
      ]}
   end
@@ -80,9 +105,9 @@ defmodule Bodyguard.Plug.Authorize do
   def call(conn, {nil, opts}) do
     Bodyguard.permit!(
       opts[:policy],
-      get_action(conn, opts[:action]),
-      get_user(conn, opts[:user_fun]),
-      get_params(conn, opts[:params])
+      resolve_param_or_callback(conn, opts[:action]),
+      resolve_param_or_callback(conn, opts[:user]),
+      resolve_param_or_callback(conn, opts[:params])
     )
 
     conn
@@ -91,9 +116,9 @@ defmodule Bodyguard.Plug.Authorize do
   def call(conn, {fallback, opts}) do
     case Bodyguard.permit(
            opts[:policy],
-           get_action(conn, opts[:action]),
-           get_user(conn, opts[:user_fun]),
-           get_params(conn, opts[:params])
+           resolve_param_or_callback(conn, opts[:action]),
+           resolve_param_or_callback(conn, opts[:user]),
+           resolve_param_or_callback(conn, opts[:params])
          ) do
       :ok ->
         conn
@@ -105,21 +130,13 @@ defmodule Bodyguard.Plug.Authorize do
     end
   end
 
-  defp get_user(conn, user_fun) when is_function(user_fun, 1) do
-    user_fun.(conn)
+  defp resolve_param_or_callback(conn, fun) when is_function(fun, 1) do
+    fun.(conn)
   end
 
-  defp get_user(_conn, nil), do: nil
-
-  defp get_action(conn, action_fun) when is_function(action_fun, 1) do
-    action_fun.(conn)
+  defp resolve_param_or_callback(conn, {module, fun}) when is_atom(module) and is_atom(fun) do
+    apply(module, fun, [conn])
   end
 
-  defp get_action(_conn, action), do: action
-
-  defp get_params(conn, params_fun) when is_function(params_fun, 1) do
-    params_fun.(conn)
-  end
-
-  defp get_params(_conn, params), do: params
+  defp resolve_param_or_callback(_conn, value), do: value
 end
