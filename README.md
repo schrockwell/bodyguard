@@ -38,7 +38,7 @@ defmodule MyAppWeb.PostController do
     user = conn.assigns.current_user
     post = MyApp.Blog.get_post!(id)
 
-    with :ok <- Bodyguard.permit(MyApp.Blog, :update_post, user, post),
+    with true <- Bodyguard.permit(MyApp.Blog, :update_post, user, post),
       {:ok, post} <- MyApp.Blog.update_post(post, post_params)
     do
       redirect(conn, to: post_path(conn, :show, post))
