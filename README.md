@@ -34,7 +34,7 @@ end
 defmodule MyAppWeb.PostController do
   use MyAppWeb, :controller
 
-  def update(conn, %{"id" => id, "post" => post_params})
+  def update(conn, %{"id" => id, "post" => post_params}) do
     user = conn.assigns.current_user
     post = MyApp.Blog.get_post!(id)
 
