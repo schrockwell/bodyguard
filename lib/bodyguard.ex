@@ -5,6 +5,7 @@ defmodule Bodyguard do
   Please see the [README](readme.html).
   """
 
+  @type action :: atom | String.t
   @type opts :: keyword | %{optional(atom) => any}
 
   @doc """
@@ -16,7 +17,7 @@ defmodule Bodyguard do
   to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
   changed.
   """
-  @spec permit(policy :: module, action :: atom, user :: any, params :: any) ::
+  @spec permit(policy :: module, action :: action, user :: any, params :: any) ::
           :ok | {:error, any} | no_return()
   def permit(policy, action, user, params \\ []) do
     params = try_to_mapify(params)
@@ -42,7 +43,7 @@ defmodule Bodyguard do
   * `error_status` – the HTTP status code to raise with the error (default 403)
   """
 
-  @spec permit!(policy :: module, action :: atom, user :: any, params :: any, opts :: opts) ::
+  @spec permit!(policy :: module, action :: action, user :: any, params :: any, opts :: opts) ::
           :ok | no_return()
   def permit!(policy, action, user, params \\ [], opts \\ []) do
     params = try_to_mapify(params)
@@ -68,7 +69,7 @@ defmodule Bodyguard do
   @doc """
   The same as `permit/4`, but returns a boolean.
   """
-  @spec permit?(policy :: module, action :: atom, user :: any, params :: any) :: boolean
+  @spec permit?(policy :: module, action :: action, user :: any, params :: any) :: boolean
   def permit?(policy, action, user, params \\ []) do
     case permit(policy, action, user, params) do
       :ok -> true
