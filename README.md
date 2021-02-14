@@ -56,7 +56,7 @@ To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then defi
 
 Don't use these callbacks directly - instead, go through `Bodyguard.permit/4`. This will convert any keyword-list `params` into a map, and will coerce the callback result into a strict `:ok` or `{:error, reason}` result. The default failure `reason` is `:unauthorized` unless specified otherwise in the callback.
 
-Also provided are `Bodyguard.permit?/4` (returns a boolean) and `Bodyguard.permit!/5` (rasies `Bodyguard.NotAuthorizedError` on failure).
+Also provided are `Bodyguard.permit?/4` (returns a boolean) and `Bodyguard.permit!/5` (raises `Bodyguard.NotAuthorizedError` on failure).
 
 ```elixir
 # lib/my_app/blog/blog.ex
