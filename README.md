@@ -204,8 +204,8 @@ Testing is pretty straightforward – use the `Bodyguard` top-level API.
 assert :ok == Bodyguard.permit(MyApp.Blog, :successful_action, user)
 assert {:error, :unauthorized} == Bodyguard.permit(MyApp.Blog, :failing_action, user)
 
-assert Bodyguard.permit(MyApp.Blog, :successful_action, user)
-refute Bodyguard.permit(MyApp.Blog, :failing_action, user)
+assert Bodyguard.permit?(MyApp.Blog, :successful_action, user)
+refute Bodyguard.permit?(MyApp.Blog, :failing_action, user)
 
 error = assert_raise Bodyguard.NotAuthorizedError, fun ->
   Bodyguard.permit(MyApp.Blog, :failing_action, user)
