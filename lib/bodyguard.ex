@@ -112,7 +112,7 @@ defmodule Bodyguard do
     opts = Enum.into(opts, %{})
 
     {schema, params} =
-      get_option("Bodyguard.scope/4", params, opts, :schema, resolve_schema(query))
+      get_option_lazy("Bodyguard.scope/4", params, opts, :schema, fn -> resolve_schema(query) end)
 
     apply(schema, :scope, [query, user, params])
   end
@@ -129,7 +129,7 @@ defmodule Bodyguard do
 
   # Pulls an option from the `params` argument if possible, falling back on
   # the new `opts` argument. Returns {option_value, params}
-  defp get_option(name, params, opts, key, default) do
+  defp get_option_lazy(name, params, opts, key, default_fn) do
     if is_map(params) and Map.has_key?(params, key) do
       # Treat the new `params` as the old `opts`
       IO.puts(
@@ -138,11 +138,15 @@ defmodule Bodyguard do
         }."
       )
 
-      Map.pop(params, key, default)
+      Map.pop_lazy(params, key, default_fn)
     else
       # Ignore `params` and just get it from `opts`
-      {Map.get(opts, key, default), params}
+      {Map.get_lazy(opts, key, default_fn), params}
     end
+  end
+
+  defp get_option(name, params, opts, key, default_value) do
+    get_option_lazy(name, params, opts, key, fn -> default_value end)
   end
 
   # Ecto 2 query (this feels dirty...)

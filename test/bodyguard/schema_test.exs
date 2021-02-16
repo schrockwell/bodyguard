@@ -56,6 +56,10 @@ defmodule SchemaTest do
 
     # New syntax
     assert :weird_scoped_query ==
-             Bodyguard.scope(MySchema, :user, "params", schema: MyWeirdSchema)
+      Bodyguard.scope(MySchema, :user, "params", schema: MyWeirdSchema)
+
+    # Make sure a non-queryable is overrridden
+    assert :weird_scoped_query == Bodyguard.scope("non-queryable", :user, schema: MyWeirdSchema)
+    assert :weird_scoped_query == Bodyguard.scope("non-queryable", :user, "params", schema: MyWeirdSchema)
   end
 end
