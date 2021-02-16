@@ -26,7 +26,11 @@ defmodule Bodyguard.Mixfile do
   end
 
   defp deps do
-    [{:plug, "~> 1.0"}, {:ex_doc, "~> 0.21", only: :dev}]
+    [
+      {:plug, "~> 1.0"},
+      {:ex_doc, "~> 0.21", only: :dev},
+      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
+    ]
   end
 
   defp description do
