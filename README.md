@@ -8,9 +8,9 @@ The `Bodyguard.Policy` behaviour is implemented with a single required callback.
 
 This is an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) for the earlier readme.
 
-* [Docs](https://hexdocs.pm/bodyguard/) ← complete documentation
-* [Hex](https://hex.pm/packages/bodyguard)
-* [GitHub](https://github.com/schrockwell/bodyguard)
+- [Docs](https://hexdocs.pm/bodyguard/) ← complete documentation
+- [Hex](https://hex.pm/packages/bodyguard)
+- [GitHub](https://github.com/schrockwell/bodyguard)
 
 ## Quick Example
 
@@ -21,13 +21,14 @@ Define authorization rules directly in the context module:
 defmodule MyApp.Blog do
   @behaviour Bodyguard.Policy
 
-  def authorize(:update_post, user, post) do
-    cond do
-      user.role == :admin -> :ok
-      user.id == post.user_id -> :ok
-      true -> :error
-    end
-  end
+  # Admins can update anything
+  def authorize(:update_post, %{role: :admin} = _user, _post), do: :ok
+
+  # Users can update their owned posts
+  def authorize(:update_post, %{id: user_id} = _user, %{user_id: user_id} = _post), do: :ok
+
+  # Otherwise, denied
+  def authorize(:update_post, _user, _post), do: :error
 end
 
 # lib/my_app_web/controllers/post_controller.ex
@@ -51,8 +52,8 @@ end
 
 To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then define `authorize(action, user, params)` callbacks, which must return:
 
-* `:ok` or `true` to permit an action
-* `:error`, `{:error, reason}`, or `false` to deny an action
+- `:ok` or `true` to permit an action
+- `:error`, `{:error, reason}`, or `false` to deny an action
 
 Don't use these callbacks directly - instead, go through `Bodyguard.permit/4`. This will convert any keyword-list `params` into a map, and will coerce the callback result into a strict `:ok` or `{:error, reason}` result. The default failure `reason` is `:unauthorized` unless specified otherwise in the callback.
 
@@ -123,7 +124,7 @@ Bodyguard doesn't make any assumptions about where authorization checks are perf
 
 ## Plugs
 
-* `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
+- `Bodyguard.Plug.Authorize` – perform authorization in the middle of a pipeline
 
 This plug's config utilizes callback functions called getters, which are 1-arity functions that
 accept the `conn` and return the appropriate value.
@@ -141,7 +142,7 @@ defmodule MyAppWeb.PostController do
     policy: MyApp.Blog.Policy,
     action: {Phoenix.Controller, :action_name},
     user: {MyApp.Authentication, :current_user},
-    params: & &1.assigns.post
+    params: {__MODULE__, :extract_post}
 
   def show(conn, _) do
     # Already assigned and authorized
@@ -149,9 +150,11 @@ defmodule MyAppWeb.PostController do
   end
 
   defp get_post(conn, _) do
-    post = MyApp.Posts.get_post!(conn.params["id"])
-    assign(conn, :post, post)
+    assign(conn, :post, MyApp.Posts.get_post!(conn.params["id"]))
   end
+
+  # Helper for the Authorize plug
+  def extract_post(conn), do: conn.assigns.posts
 end
 ```
 
@@ -215,7 +218,7 @@ assert %{status: 403, message: "not authorized"} = error
 
 ## Installation
 
-  1. Add `bodyguard` to your list of dependencies:
+1. Add `bodyguard` to your list of dependencies:
 
 ```elixir
 # mix.exs
@@ -224,7 +227,7 @@ def deps do
 end
 ```
 
-  2. Create an error view for handling `403 Forbidden`.
+2. Create an error view for handling `403 Forbidden`.
 
 ```elixir
 # lib/my_app_web/views/error_view.ex
@@ -237,22 +240,22 @@ defmodule MyAppWeb.ErrorView do
 end
 ```
 
-  3. Wire up a [fallback controller](#controllers) to render this error view on `{:error, :unauthorized}`.
+3. Wire up a [fallback controller](#controllers) to render this error view on `{:error, :unauthorized}`.
 
-  4. Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `authorize/3` callbacks.
+4. Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `authorize/3` callbacks.
 
-  5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `scope/3` callbacks.
+5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `scope/3` callbacks.
 
-  6. (Optional) Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
+6. (Optional) Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
 
 ## Alternatives
 
 Not what you're looking for?
 
-* [Roll your own](https://dockyard.com/blog/2017/08/01/authorization-for-phoenix-contexts)
-* [PolicyWonk](https://github.com/boydm/policy_wonk)
-* [Canada](https://github.com/jarednorman/canada)
-* [Canary](https://github.com/cpjk/canary)
+- [Roll your own](https://dockyard.com/blog/2017/08/01/authorization-for-phoenix-contexts)
+- [PolicyWonk](https://github.com/boydm/policy_wonk)
+- [Canada](https://github.com/jarednorman/canada)
+- [Canary](https://github.com/cpjk/canary)
 
 ## Community
 
