@@ -25,12 +25,21 @@ defmodule Bodyguard.Plug.Authorize do
 
   ### Default Plug Options
 
-  Application-wide defaults for the above options can be specified in the application config. For
-  example, if you're using Phoenix with Pow for authentication, you might want to specify:
+  You can provide default options for this plug by simply wrapping your own plug around it.
+  For example, if you're using Phoenix with Pow for authentication, you might want to specify:
 
-      config :bodyguard, Bodyguard.Plug.Authorize,
-        action: {Phoenix.Controller, :action_name},
-        user: {Pow.Plug, :current_user}
+      defmodule MyAppWeb.Authorize do
+        def init(opts) do
+          opts
+          |> Keyword.put_new(:action, {Phoenix.Controller, :action_name})
+          |> Keyword.put_new(:user, {Pow.Plug, :current_user})
+          |> Bodyguard.Plug.Authorize.init()
+        end
+
+        def call(conn, opts) do
+          Bodyguard.Plug.Authorize.call(conn, opts)
+        end
+      end
 
   ## Examples
 
