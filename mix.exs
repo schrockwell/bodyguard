@@ -1,23 +1,20 @@
 defmodule Bodyguard.Mixfile do
   use Mix.Project
 
+  @source_url "https://github.com/schrockwell/bodyguard"
+  @version "2.4.1"
+
   def project do
     [
       app: :bodyguard,
-      version: "2.4.1",
+      version: @version,
       elixir: "~> 1.3",
+      name: "Bodyguard",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: description(),
-      package: package(),
-
-      # Docs
-      name: "Bodyguard",
-      docs: [
-        extras: ["README.md"],
-        main: "readme"
-      ]
+      docs: docs(),
+      package: package()
     ]
   end
 
@@ -28,7 +25,7 @@ defmodule Bodyguard.Mixfile do
   defp deps do
     [
       {:plug, "~> 1.0"},
-      {:ex_doc, "~> 0.21", only: :dev},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
     ]
   end
@@ -43,11 +40,23 @@ defmodule Bodyguard.Mixfile do
   defp package do
     [
       name: :bodyguard,
+      description: description(),
       maintainers: ["Rockwell Schrock", "Ben Cates"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/schrockwell/bodyguard"
+        "Changelog" => "https://hexdocs.pm/bodyguard/changelog.html",
+        "GitHub" => @source_url
       }
+    ]
+  end
+
+  defp docs do
+    [
+      extras: ["CHANGELOG.md", "README.md"],
+      main: "readme",
+      source_url: @source_url,
+      source_ref: "v#{@version}",
+      formatters: ["html"]
     ]
   end
 end

@@ -1,4 +1,10 @@
-# Bodyguard [![Hex Version](https://img.shields.io/hexpm/v/bodyguard.svg)](https://hex.pm/packages/bodyguard) [![docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/bodyguard/)
+# Bodyguard
+
+[![Module Version](https://img.shields.io/hexpm/v/bodyguard.svg)](https://hex.pm/packages/bodyguard)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/bodyguard/)
+[![Total Download](https://img.shields.io/hexpm/dt/bodyguard.svg)](https://hex.pm/packages/bodyguard)
+[![License](https://img.shields.io/hexpm/l/bodyguard.svg)](https://github.com/schrockwell/bodyguard/blob/master/LICENSE)
+[![Last Updated](https://img.shields.io/github/last-commit/schrockwell/bodyguard.svg)](https://github.com/schrockwell/bodyguard/commits/master)
 
 Bodyguard protects the context boundaries of your application. 💪
 
@@ -196,7 +202,8 @@ Here is the default library config.
 
 ```elixir
 config :bodyguard,
-  default_error: :unauthorized # The second element of the {:error, reason} tuple returned on auth failure
+  # The second element of the {:error, reason} tuple returned on auth failure
+  default_error: :unauthorized
 ```
 
 ## Testing
@@ -218,27 +225,29 @@ assert %{status: 403, message: "not authorized"} = error
 
 ## Installation
 
-1. Add `bodyguard` to your list of dependencies:
+1.  Add `:bodyguard` to your list of dependencies:
 
-```elixir
-# mix.exs
-def deps do
-  [{:bodyguard, "~> 2.4"}]
-end
-```
+    ```elixir
+    # mix.exs
+    def deps do
+      [
+        {:bodyguard, "~> 2.4"}
+      ]
+    end
+    ```
 
-2. Create an error view for handling `403 Forbidden`.
+2.  Create an error view for handling `403 Forbidden`.
 
-```elixir
-# lib/my_app_web/views/error_view.ex
-defmodule MyAppWeb.ErrorView do
-  use MyAppWeb, :view
+    ```elixir
+    # lib/my_app_web/views/error_view.ex
+    defmodule MyAppWeb.ErrorView do
+      use MyAppWeb, :view
 
-  def render("403.html", _assigns) do
-    "Forbidden"
-  end
-end
-```
+      def render("403.html", _assigns) do
+        "Forbidden"
+      end
+    end
+    ```
 
 3. Wire up a [fallback controller](#controllers) to render this error view on `{:error, :unauthorized}`.
 
