@@ -5,7 +5,7 @@ defmodule Bodyguard do
   Please see the [README](readme.html).
   """
 
-  @type action :: atom | String.t
+  @type action :: atom | String.t()
   @type opts :: keyword | %{optional(atom) => any}
 
   require Logger
