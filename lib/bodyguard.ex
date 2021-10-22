@@ -101,7 +101,7 @@ defmodule Bodyguard do
       end
 
   If `params` is a keyword list, it is converted to a map before passing down
-  to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
+  to the `c:Bodyguard.Schema.scope/3` callback. Otherwise, `params` is not
   changed.
 
   #### Options
