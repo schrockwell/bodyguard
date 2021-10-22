@@ -56,11 +56,11 @@ defmodule Bodyguard.Policy do
     quote bind_quoted: [opts: opts] do
       @behaviour Bodyguard.Policy
 
+      require Logger
+
       if policy = Keyword.get(opts, :policy) do
-        IO.puts(
-          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{
-            inspect(policy)
-          }\n"
+        Logger.debug(
+          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{inspect(policy)}\n"
         )
 
         defdelegate authorize(action, user, params), to: policy

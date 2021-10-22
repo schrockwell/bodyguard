@@ -1,6 +1,8 @@
 defmodule PolicyTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   setup do
     %{context: TestContext, user: %TestContext.User{}}
   end
@@ -39,12 +41,17 @@ defmodule PolicyTest do
     end
 
     # Old syntax (using params)
-    custom_error =
-      assert_raise Bodyguard.NotAuthorizedError, fn ->
-        Bodyguard.permit!(context, :fail, user, error_message: "whoops", error_status: 500)
-      end
+    assert capture_log(fn ->
+             custom_error =
+               assert_raise Bodyguard.NotAuthorizedError, fn ->
+                 Bodyguard.permit!(context, :fail, user,
+                   error_message: "whoops",
+                   error_status: 500
+                 )
+               end
 
-    assert %{message: "whoops", status: 500} = custom_error
+             assert %{message: "whoops", status: 500} = custom_error
+           end) =~ "DEPRECATION WARNING"
 
     # New syntax (using opts)
     custom_error =
