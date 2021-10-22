@@ -5,6 +5,7 @@
 [![Total Download](https://img.shields.io/hexpm/dt/bodyguard.svg)](https://hex.pm/packages/bodyguard)
 [![License](https://img.shields.io/hexpm/l/bodyguard.svg)](https://github.com/schrockwell/bodyguard/blob/master/LICENSE)
 [![Last Updated](https://img.shields.io/github/last-commit/schrockwell/bodyguard.svg)](https://github.com/schrockwell/bodyguard/commits/master)
+[![tests](https://github.com/schrockwell/bodyguard/actions/workflows/tests.yml/badge.svg)](https://github.com/schrockwell/bodyguard/actions)
 
 Bodyguard protects the context boundaries of your application. 💪
 
@@ -106,6 +107,8 @@ end
 
 Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures. The fallback controller will handle `{:error, reason}` authorization failures.
 
+If you are using the `Bodyguard.Plug.Authorize` plug, then you must use its `:fallback` option instead, since the plug pipeline will be halted before the controller action is called.
+
 Typically, authorization failure results in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller.
 
 See the section "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass in the `user` to each action.
@@ -148,7 +151,8 @@ defmodule MyAppWeb.PostController do
     policy: MyApp.Blog.Policy,
     action: {Phoenix.Controller, :action_name},
     user: {MyApp.Authentication, :current_user},
-    params: {__MODULE__, :extract_post}
+    params: {__MODULE__, :extract_post},
+    fallback: MyAppWeb.FallbackController
 
   def show(conn, _) do
     # Already assigned and authorized

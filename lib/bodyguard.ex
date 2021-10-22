@@ -5,7 +5,10 @@ defmodule Bodyguard do
   Please see the [README](readme.html).
   """
 
+  @type action :: atom | String.t()
   @type opts :: keyword | %{optional(atom) => any}
+
+  require Logger
 
   @doc """
   Authorize a user's action.
@@ -16,7 +19,7 @@ defmodule Bodyguard do
   to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
   changed.
   """
-  @spec permit(policy :: module, action :: atom, user :: any, params :: any) ::
+  @spec permit(policy :: module, action :: action, user :: any, params :: any) ::
           :ok | {:error, any} | no_return()
   def permit(policy, action, user, params \\ []) do
     params = try_to_mapify(params)
@@ -42,7 +45,7 @@ defmodule Bodyguard do
   * `error_status` – the HTTP status code to raise with the error (default 403)
   """
 
-  @spec permit!(policy :: module, action :: atom, user :: any, params :: any, opts :: opts) ::
+  @spec permit!(policy :: module, action :: action, user :: any, params :: any, opts :: opts) ::
           :ok | no_return()
   def permit!(policy, action, user, params \\ [], opts \\ []) do
     params = try_to_mapify(params)
@@ -68,7 +71,7 @@ defmodule Bodyguard do
   @doc """
   The same as `permit/4`, but returns a boolean.
   """
-  @spec permit?(policy :: module, action :: atom, user :: any, params :: any) :: boolean
+  @spec permit?(policy :: module, action :: action, user :: any, params :: any) :: boolean
   def permit?(policy, action, user, params \\ []) do
     case permit(policy, action, user, params) do
       :ok -> true
@@ -98,7 +101,7 @@ defmodule Bodyguard do
       end
 
   If `params` is a keyword list, it is converted to a map before passing down
-  to the `c:Bodyguard.Policy.authorize/3` callback. Otherwise, `params` is not
+  to the `c:Bodyguard.Schema.scope/3` callback. Otherwise, `params` is not
   changed.
 
   #### Options
@@ -132,10 +135,8 @@ defmodule Bodyguard do
   defp get_option_lazy(name, params, opts, key, default_fn) do
     if is_map(params) and Map.has_key?(params, key) do
       # Treat the new `params` as the old `opts`
-      IO.puts(
-        "DEPRECATION WARNING - Please pass the #{inspect(key)} option to the new `opts` argument in #{
-          name
-        }."
+      Logger.debug(
+        "DEPRECATION WARNING - Please pass the #{inspect(key)} option to the new `opts` argument in #{name}."
       )
 
       Map.pop_lazy(params, key, default_fn)
@@ -171,13 +172,15 @@ defmodule Bodyguard do
       #{inspect(unknown)} - specify the :schema option"
   end
 
-  @default_error Application.get_env(:bodyguard, :default_error, :unauthorized)
-
   # Coerce auth results
   defp resolve_result(true), do: :ok
   defp resolve_result(:ok), do: :ok
-  defp resolve_result(false), do: {:error, @default_error}
-  defp resolve_result(:error), do: {:error, @default_error}
+  defp resolve_result(false), do: {:error, default_error()}
+  defp resolve_result(:error), do: {:error, default_error()}
   defp resolve_result({:error, reason}), do: {:error, reason}
   defp resolve_result(invalid), do: raise("Unexpected authorization result: #{inspect(invalid)}")
+
+  defp default_error do
+    Application.get_env(:bodyguard, :default_error, :unauthorized)
+  end
 end

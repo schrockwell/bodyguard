@@ -7,6 +7,9 @@
 * **Deprecation:** addition to API; old behavior maintained with deprecation warning
 * **Change:** breaking change to API
 
+## Unreleased
+* **Fix:** get default_error configuration at runtime
+
 ## v2.4.0 - 2019-08-04
 
 * **Addition:** Adding ability to specify `{module, function}` for plug's value getters
