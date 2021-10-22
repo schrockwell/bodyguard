@@ -1,6 +1,6 @@
-# Bodyguard [![Hex Version](https://img.shields.io/hexpm/v/bodyguard.svg)](https://hex.pm/packages/bodyguard) [![docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/bodyguard/)
+# Bodyguard
 
-![tests](https://github.com/schrockwell/bodyguard/actions/workflows/tests.yml/badge.svg)
+[![Hex Version](https://img.shields.io/hexpm/v/bodyguard.svg)](https://hex.pm/packages/bodyguard) [![docs](https://img.shields.io/badge/docs-hexpm-blue.svg)](https://hexdocs.pm/bodyguard/) ![tests](https://github.com/schrockwell/bodyguard/actions/workflows/tests.yml/badge.svg)
 
 Bodyguard protects the context boundaries of your application. 💪
 
