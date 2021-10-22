@@ -6,13 +6,13 @@ env:
 
 # https://github.com/elixir-lang/elixir/blob/master/lib/elixir/pages/compatibility-and-deprecations.md
 jobs:
-  elixir_1_12_and_1_13:
+  elixir_1_12:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
         otp: [22.x, 23.x, 24.x]
-        elixir: [1.12.x, 1.13.x]
+        elixir: [1.12.x]
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
