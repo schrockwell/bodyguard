@@ -37,6 +37,7 @@ defmodule Bodyguard.Policy do
 
   """
 
+  @type action :: atom | String.t
   @type auth_result :: :ok | :error | {:error, reason :: any} | true | false
 
   @doc """
@@ -49,18 +50,18 @@ defmodule Bodyguard.Policy do
   It bears no intrinsic relationship to a controller action, and instead should
   share a name with a particular function on the context.
   """
-  @callback authorize(action :: atom, user :: any, params :: %{atom => any} | any) :: auth_result
+  @callback authorize(action :: action, user :: any, params :: %{atom => any} | any) :: auth_result
 
   @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @behaviour Bodyguard.Policy
 
+      require Logger
+
       if policy = Keyword.get(opts, :policy) do
-        IO.puts(
-          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{
-            inspect(policy)
-          }\n"
+        Logger.debug(
+          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{inspect(policy)}\n"
         )
 
         defdelegate authorize(action, user, params), to: policy
