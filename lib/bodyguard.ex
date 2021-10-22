@@ -172,13 +172,15 @@ defmodule Bodyguard do
       #{inspect(unknown)} - specify the :schema option"
   end
 
-  @default_error Application.get_env(:bodyguard, :default_error, :unauthorized)
+  defp default_error do
+    Application.get_env(:bodyguard, :default_error, :unauthorized)
+  end
 
   # Coerce auth results
   defp resolve_result(true), do: :ok
   defp resolve_result(:ok), do: :ok
-  defp resolve_result(false), do: {:error, @default_error}
-  defp resolve_result(:error), do: {:error, @default_error}
+  defp resolve_result(false), do: {:error, default_error}
+  defp resolve_result(:error), do: {:error, default_error}
   defp resolve_result({:error, reason}), do: {:error, reason}
   defp resolve_result(invalid), do: raise("Unexpected authorization result: #{inspect(invalid)}")
 end

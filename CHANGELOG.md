@@ -7,6 +7,9 @@
 
 # Bodyguard Changelog
 
+## Unreleased
+* **Fix:** get default_error configuration at runtime
+
 ## v2.4.0
 
 * **Addition:** Adding ability to specify `{module, function}` for plug's value getters
