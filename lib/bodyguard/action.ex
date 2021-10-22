@@ -30,7 +30,7 @@ defmodule Bodyguard.Action do
         use MyApp.Web, :controller
         import Bodyguard.Action
         alias MyApp.Blog
-        
+
         action_fallback MyApp.FallbackController
         plug Bodyguard.Plug.BuildAction, context: Blog, user: &get_current_user/1
 
@@ -56,8 +56,8 @@ defmodule Bodyguard.Action do
       |> put_policy(Blog.SomeSpecialPolicy)
       |> assign(:drafts, true)
       |> authorize(:list_posts)
-      |> put_job(fn action -> 
-        Blog.list_posts(action.user, drafts_only: action.assigns.drafts) 
+      |> put_job(fn action ->
+        Blog.list_posts(action.user, drafts_only: action.assigns.drafts)
       end)
       |> put_fallback(fn _action -> {:error, :not_found} end)
       |> run()
