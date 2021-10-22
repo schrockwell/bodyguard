@@ -6,13 +6,13 @@ env:
 
 # https://github.com/elixir-lang/elixir/blob/master/lib/elixir/pages/compatibility-and-deprecations.md
 jobs:
-  elixir_1_12:
+  elixir_1_12_and_1_13:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
         otp: [22.x, 23.x, 24.x]
-        elixir: [1.12.x]
+        elixir: [1.12.x, 1.13.x]
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
@@ -37,7 +37,6 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - run: mix do deps.get, compile --warnings-as-errors
-      - run: mix format --dry-run --check-formatted
       - run: mix test
 
   elixir_1_10:
@@ -54,7 +53,6 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - run: mix do deps.get, compile --warnings-as-errors
-      - run: mix format --dry-run --check-formatted
       - run: mix test
 
   elixir_1_9:
@@ -71,5 +69,4 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - run: mix do deps.get, compile --warnings-as-errors
-      - run: mix format --dry-run --check-formatted
       - run: mix test
