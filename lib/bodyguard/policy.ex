@@ -1,72 +1,64 @@
 defmodule Bodyguard.Policy do
-  @moduledoc """
-  Where authorization rules live.
-
-  Typically the callbacks are designed to be used by `Bodyguard.permit/4` and
-  are not called directly.
-
-  The only requirement is to implement the `c:authorize/3` callback:
-
-      defmodule MyApp.MyContext do
-        @behaviour Bodyguard.Policy
-
-        def authorize(action, user, params) do
-          # Return :ok or true to permit
-          # Return :error, {:error, reason}, or false to deny
-        end
-      end
-
-  To perform authorization checks, use `Bodyguard.permit/4` and friends:
-
-      with :ok <- Bodyguard.permit(MyApp.MyContext, :action_name, user, param: :value) do
-        # ...
-      end
-
-      if Bodyguard.permit?(MyApp.MyContext, :action_name, user, param: :value) do
-        # ...
-      end
-
-      Bodyguard.permit!(MyApp.MyContext, :action_name, user, param: :value)
-
-  If you want to define the callbacks in another module, you can use
-  `defdelegate`:
-
-      defmodule MyApp.MyContext do
-        defdelegate authorize(action, user, params), to: Some.Other.Policy
-      end
-
-  """
-
   @type action :: atom | String.t()
-  @type auth_result :: :ok | :error | {:error, reason :: any} | true | false
+  @type context :: %{required(atom) => term}
 
-  @doc """
-  Callback to authorize a user's action.
+  @callback permit?(actor :: term, action :: action, context :: context) :: boolean
+  @callback permit!(actor :: term, action :: action, context :: context) :: term | no_return
 
-  To permit an action, return `:ok` or `true`. To deny, return `:error`,
-  `{:error, reason}`, or `false`.
-
-  The `action` is whatever user-specified contextual action is being authorized.
-  It bears no intrinsic relationship to a controller action, and instead should
-  share a name with a particular function on the context.
-  """
-  @callback authorize(action :: action, user :: any, params :: %{atom => any} | any) ::
-              auth_result
+  @optional_callbacks permit!: 3
 
   @doc false
-  defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
+  def permit?(policy, actor, action, context) do
+    policy.permit?(actor, action, context)
+  end
+
+  @doc false
+  def permit!(policy, actor, action, context) do
+    if policy.permit?(actor, action, context) do
+      actor
+    else
+      raise Bodyguard.NotAuthorizedError,
+        actor: actor,
+        action: action,
+        context: context,
+        policy: policy
+    end
+  end
+
+  defmacro __using__(opts \\ []) do
+    quote do
       @behaviour Bodyguard.Policy
+      @bodyguard_opts unquote(opts)
+      @before_compile Bodyguard.Policy
 
-      require Logger
-
-      if policy = Keyword.get(opts, :policy) do
-        Logger.debug(
-          "DEPRECATION WARNING - #{inspect(__MODULE__)}: `use Bodyguard.Policy` is deprecated. Please use defdelegate instead, like this:\n\n    defdelegate authorize(action, user, params), to: #{inspect(policy)}\n"
-        )
-
-        defdelegate authorize(action, user, params), to: policy
+      def permit!(actor, action, context) do
+        Bodyguard.Policy.permit!(__MODULE__, actor, action, context)
       end
+    end
+  end
+
+  defmacro __before_compile__(env) do
+    opts = Module.get_attribute(env.module, :bodyguard_opts)
+    fallback_to = Keyword.get(opts, :fallback_to, nil)
+
+    case fallback_to do
+      nil ->
+        nil
+
+      value when is_boolean(value) ->
+        quote do
+          def permit?(_, _, _), do: unquote(fallback_to)
+        end
+
+      module when is_atom(module) ->
+        quote do
+          def permit?(actor, action, context) do
+            unquote(module).permit?(actor, action, context)
+          end
+        end
+
+      _ ->
+        raise ArgumentError, "Policy `:fallback` option must be a boolean value or another policy module name"
     end
   end
 end

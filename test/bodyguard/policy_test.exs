@@ -1,76 +1,79 @@
 defmodule PolicyTest do
   use ExUnit.Case, async: false
 
-  import ExUnit.CaptureLog
+  defmodule TestPolicy do
+    use Bodyguard.Policy
 
-  setup do
-    %{context: TestContext, user: %TestContext.User{}}
+    def permit?(_actor, :fail, _context), do: false
+    def permit?(_actor, :succeed, _context), do: true
   end
 
-  test "authorizing behaviour directly", %{context: context, user: user} do
-    assert :ok = context.authorize(:action, user)
-    assert {:error, :unauthorized} = context.authorize(:fail, user)
-    assert {:error, %{key: :value}} = context.authorize(:fail_with_params, user, %{key: :value})
+  defmodule AlwaysTruePolicy do
+    @behaviour Bodyguard.Policy
+
+    def permit?(_actor, _action, _context), do: true
   end
 
-  test "authorizing via helper", %{context: context, user: user} do
-    assert :ok = Bodyguard.permit(context, :action, user)
-    assert :ok = Bodyguard.permit(context, :ok_boolean, user)
-    assert {:error, :unauthorized} = Bodyguard.permit(context, :fail, user)
+  defmodule FalseFallbackPolicy do
+    use Bodyguard.Policy, fallback_to: false
 
-    assert {:error, %{key: :value}} =
-             Bodyguard.permit(context, :fail_with_params, user, %{key: :value})
-
-    assert {:error, %{key: :value}} =
-             Bodyguard.permit(context, :fail_with_params, user, key: :value)
-
-    assert {:error, :unauthorized} = Bodyguard.permit(context, :fail_boolean, user)
-    assert {:error, :unauthorized} = Bodyguard.permit(context, :error_boolean, user)
+    def permit?(_actor, :fail, _context), do: false
+    def permit?(_actor, :succeed, _context), do: true
   end
 
-  test "authorizing via boolean helper", %{context: context, user: user} do
-    assert Bodyguard.permit?(context, :action, user)
-    refute Bodyguard.permit?(context, :fail, user)
+  defmodule DeferToFallbackPolicy do
+    use Bodyguard.Policy, fallback_to: AlwaysTruePolicy
+
+    def permit?(_actor, :fail, _context), do: false
+    def permit?(_actor, :succeed, _context), do: true
   end
 
-  test "authorizing via bangin' helpers", %{context: context, user: user} do
-    assert :ok = Bodyguard.permit!(context, :action, user)
-
-    assert_raise Bodyguard.NotAuthorizedError, fn ->
-      Bodyguard.permit!(context, :fail, user)
+  describe "a regular policy" do
+    test "returns true on permit?/3 success" do
+      assert TestPolicy.permit?(:user, :succeed, %{})
+      assert Bodyguard.permit?(TestPolicy, :user, :succeed, %{})
     end
 
-    # Old syntax (using params)
-    assert capture_log(fn ->
-             custom_error =
-               assert_raise Bodyguard.NotAuthorizedError, fn ->
-                 Bodyguard.permit!(context, :fail, user,
-                   error_message: "whoops",
-                   error_status: 500
-                 )
-               end
+    test "returns false on permit?/3 failure" do
+      refute TestPolicy.permit?(:user, :fail, %{})
+      refute Bodyguard.permit?(TestPolicy, :user, :fail, %{})
+    end
 
-             assert %{message: "whoops", status: 500} = custom_error
-           end) =~ "DEPRECATION WARNING"
+    test "returns the actor on permit!/3 success" do
+      assert :user = TestPolicy.permit!(:user, :succeed, %{})
+      assert :user = Bodyguard.permit!(TestPolicy, :user, :succeed, %{})
+    end
 
-    # New syntax (using opts)
-    custom_error =
+    test "raises NotAuthorizedError on permit!/3 failure" do
       assert_raise Bodyguard.NotAuthorizedError, fn ->
-        Bodyguard.permit!(
-          context,
-          :fail,
-          user,
-          "params",
-          error_message: "whoops",
-          error_status: 500
-        )
+        TestPolicy.permit!(:user, :fail, %{})
       end
 
-    assert %{message: "whoops", status: 500} = custom_error
+      assert_raise Bodyguard.NotAuthorizedError, fn ->
+        Bodyguard.permit!(TestPolicy, :user, :fail, %{})
+      end
+    end
   end
 
-  test "specifying a separate policy", %{user: user} do
-    assert :ok = Bodyguard.permit(TestDeferralContext, :succeed, user)
-    assert {:error, :unauthorized} = Bodyguard.permit(TestDeferralContext, :fail, user)
+  describe "a policy with a fallback value" do
+    test "defaults to the fallback value" do
+      assert FalseFallbackPolicy.permit?(:user, :succeed, %{})
+      refute FalseFallbackPolicy.permit?(:user, :fail, %{})
+      refute FalseFallbackPolicy.permit?(:user, :flollop, %{})
+
+      assert_raise Bodyguard.NotAuthorizedError, fn ->
+        FalseFallbackPolicy.permit!(:user, :flollop, %{})
+      end
+    end
+  end
+
+  describe "a policy with a fallback module" do
+    test "defaults to the fallback value" do
+      assert DeferToFallbackPolicy.permit?(:user, :succeed, %{})
+      refute DeferToFallbackPolicy.permit?(:user, :fail, %{})
+      assert DeferToFallbackPolicy.permit?(:user, :flollop, %{})
+
+      DeferToFallbackPolicy.permit!(:user, :flollop, %{})
+    end
   end
 end

@@ -1,5 +1,7 @@
-name: tests
-on: push
+name: Tests (v3)
+on: 
+  push:
+    branches: [3.x]
 
 env:
   MIX_ENV: test
@@ -15,6 +17,8 @@ jobs:
         elixir: [1.12.x]
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: 3.x
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -32,6 +36,8 @@ jobs:
         elixir: [1.11.x]
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: 3.x
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -48,6 +54,8 @@ jobs:
         elixir: [1.10.x]
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: 3.x
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -64,6 +72,8 @@ jobs:
         elixir: [1.9.x]
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: 3.x
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}

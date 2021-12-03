@@ -2,7 +2,7 @@ defmodule Bodyguard.Mixfile do
   use Mix.Project
 
   @source_url "https://github.com/schrockwell/bodyguard"
-  @version "2.4.2"
+  @version "3.0.0-dev"
 
   def project do
     [
@@ -24,7 +24,6 @@ defmodule Bodyguard.Mixfile do
 
   defp deps do
     [
-      {:plug, "~> 1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev, runtime: false}
     ]
@@ -41,7 +40,7 @@ defmodule Bodyguard.Mixfile do
     [
       name: :bodyguard,
       description: description(),
-      maintainers: ["Rockwell Schrock", "Ben Cates"],
+      maintainers: ["Rockwell Schrock"],
       licenses: ["MIT"],
       links: %{
         "Changelog" => "https://hexdocs.pm/bodyguard/changelog.html",
