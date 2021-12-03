@@ -1,5 +1,7 @@
 name: Tests (v2)
-on: push
+on:
+  push:
+    branches: [2.x]
 
 env:
   MIX_ENV: test
