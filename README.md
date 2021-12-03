@@ -5,7 +5,7 @@
 [![Total Download](https://img.shields.io/hexpm/dt/bodyguard.svg)](https://hex.pm/packages/bodyguard)
 [![License](https://img.shields.io/hexpm/l/bodyguard.svg)](https://github.com/schrockwell/bodyguard/blob/master/LICENSE)
 [![Last Updated](https://img.shields.io/github/last-commit/schrockwell/bodyguard.svg)](https://github.com/schrockwell/bodyguard/commits/master)
-[![tests](https://github.com/schrockwell/bodyguard/actions/workflows/tests.yml/badge.svg)](https://github.com/schrockwell/bodyguard/actions)
+[![tests](https://github.com/schrockwell/bodyguard/actions/workflows/tests-v2.yml/badge.svg)](https://github.com/schrockwell/bodyguard/actions)
 
 Bodyguard protects the context boundaries of your application. 💪
 
