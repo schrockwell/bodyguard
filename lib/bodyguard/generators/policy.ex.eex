@@ -1,0 +1,8 @@
+defmodule <%= module %> do
+  use Bodyguard.Policy
+
+  @impl Bodyguard.Policy
+  def permit?(_user, _action, %{} = _context) do
+    false
+  end
+end
