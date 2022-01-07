@@ -1,8 +1,19 @@
-defmodule <%= module %> do
+defmodule <%= policy %> do
+  @moduledoc """
+  Performs authorization.
+  """
+
   use Bodyguard.Policy
 
   @impl Bodyguard.Policy
-  def permit?(_user, _action, %{} = _context) do
+  def permit?(user, action, context \\ %{})
+
+  def permit?(nil, _action, _context) do
+    # Unauthorized user
+    false
+  end
+
+  def permit?(_user, _action, _context) do
     false
   end
 end

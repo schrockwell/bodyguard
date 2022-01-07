@@ -1,0 +1,26 @@
+defmodule <%= plug %> do
+  @moduledoc """
+  TODO
+  """
+
+  @behaviour Plug
+
+  @impl Plug
+  def init(opts) do
+    %{policy: Map.fetch!(opts, :policy)}
+  end
+
+  @impl Plug
+  def call(%{assigns: assigns} = conn, %{policy: policy}) do
+    {user, context} = Map.pop(assigns, :current_user)
+    action = Phoenix.Controller.action_name(conn)
+
+    if policy.permit?(user, action, context) do
+      conn
+    else
+      conn
+      |> Plug.Conn.send_resp(:forbidden, "Forbidden")
+      |> Plug.Conn.halt()
+    end
+  end
+end

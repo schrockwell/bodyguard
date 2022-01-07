@@ -6,7 +6,7 @@ defmodule Bodyguard.Generators do
       {:ok, opts} ->
         do_run(module, opts)
 
-      :error ->
+      _any ->
         :error
     end
   end

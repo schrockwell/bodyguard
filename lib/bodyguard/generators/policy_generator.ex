@@ -3,25 +3,18 @@ defmodule Bodyguard.Generators.PolicyGenerator do
 
   use Bodyguard.Generator
 
-  include_templates policy: [:module]
+  include_templates(policy: [:policy])
 
   def init(args) do
-    case OptionParser.parse(args, switches: []) do
-      {[], [module_name], []} ->
-        unless String.ends_with?(module_name, "Policy") do
-          IO.warn("Policy modules should have the 'Policy' suffix, e.g. '#{module_name}Policy'", [])
-        end
-
-        {:ok, %{module: String.to_atom("Elixir.#{module_name}")}}
-
-      _ ->
-        :error
+    with {parsed, [policy_name], []} <- OptionParser.parse(args, strict: [app: :string]),
+         :ok <- ensure_destination_app(parsed) do
+      {:ok, %{policy: String.to_atom("Elixir.#{policy_name}"), switches: parsed}}
     end
   end
 
-  def run(%{module: module}) do
-    content = render_policy(inspect(module))
-    path = module_to_path(module)
+  def run(%{policy: policy, switches: switches}) do
+    content = render_policy(inspect(policy))
+    path = module_to_path(switches[:app], policy)
 
     [%{content: content, path: path}]
   end
