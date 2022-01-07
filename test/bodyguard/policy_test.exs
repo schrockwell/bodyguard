@@ -1,5 +1,5 @@
 defmodule PolicyTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   defmodule TestPolicy do
     use Bodyguard.Policy
