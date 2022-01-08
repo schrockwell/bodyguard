@@ -6,8 +6,7 @@ defmodule Bodyguard.Generators.PolicyGenerator do
   include_templates(policy: [:policy])
 
   def init(args) do
-    with {parsed, [policy_name], []} <- OptionParser.parse(args, strict: [app: :string]),
-         :ok <- ensure_destination_app(parsed) do
+    with {:ok, parsed, [policy_name]} <- parse_switches(args, [app: :string]) do
       {:ok, %{policy: String.to_atom("Elixir.#{policy_name}"), switches: parsed}}
     end
   end

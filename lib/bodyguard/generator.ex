@@ -47,7 +47,7 @@ defmodule Bodyguard.Generator do
     Path.join(["lib"] ++ dirs ++ [filename])
   end
 
-  def ensure_destination_app(switches) do
+  defp ensure_destination_app(switches) do
     if Mix.Project.umbrella?() and not Keyword.has_key?(switches, :app) do
       IO.warn("The `--app` switch must be specified for umbrella apps", [])
       :error
@@ -58,5 +58,22 @@ defmodule Bodyguard.Generator do
 
   defp template_path(env, filename) do
     env.file |> Path.dirname() |> Path.join(filename <> ".eex")
+  end
+
+  defp ensure_no_unknown([]), do: :ok
+  defp ensure_no_unknown(unknown) do
+    names = for {switch, _} <- unknown, do: switch
+    IO.warn("Unknown options: #{Enum.join(names, ", ")}", [])
+    :error
+  end
+
+  def parse_switches(args, switch_spec, defaults \\ []) do
+    {switches, params, unknown} = OptionParser.parse(args, strict: switch_spec)
+    switches = Keyword.merge(defaults, switches)
+
+    with :ok <- ensure_destination_app(switches),
+      :ok <- ensure_no_unknown(unknown) do
+      {:ok, switches, params}
+    end
   end
 end

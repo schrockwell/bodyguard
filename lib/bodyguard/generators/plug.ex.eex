@@ -1,6 +1,21 @@
 defmodule <%= plug %> do
   @moduledoc """
-  TODO
+  Authorizes an action using a Bodyguard policy.
+
+  ## Prerequisities
+
+  The conn passed into this plug must already have the following assigns:
+
+    - `:current_user` - the authenticated user, or `nil` if unauthenticated
+    <%= unless switches[:phx] do %>- `:action` - the action to authenticate
+    <% end %>
+  ## Options
+
+    - `:policy` - required; the Bodyguard policy with which to perform authorization
+
+  ## Example Usage
+
+      plug <%= plug %>, policy: MyApp.MyPolicy
   """
 
   @behaviour Plug
@@ -12,9 +27,10 @@ defmodule <%= plug %> do
 
   @impl Plug
   def call(%{assigns: assigns} = conn, %{policy: policy}) do
-    {user, context} = Map.pop(assigns, :current_user)
-    action = Phoenix.Controller.action_name(conn)
-
+    {user, context} = Map.pop!(assigns, :current_user)
+    <%= if switches[:phx] do %>action = Phoenix.Controller.action_name(conn)
+    <% else %>{action, context} = Map.pop!(context, :action)
+    <% end %>
     if policy.permit?(user, action, context) do
       conn
     else

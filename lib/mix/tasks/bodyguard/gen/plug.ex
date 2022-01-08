@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Bodyguard.Gen.Plug do
   @moduledoc """
-  Generates a Plug authorization module for a Phoenix application.
+  Generates a Plug authorization module for a web application.
 
   It expects the Plug module as an argument, e.g. `MyAppWeb.Plugs.Authorize`.
 
@@ -11,6 +11,7 @@ defmodule Mix.Tasks.Bodyguard.Gen.Plug do
   ## Options
 
     * `--app` - in umbrella projects, specifies the OTP app name
+    # `--no-phx` - generate a Plug with no dependency on Phoenix
   """
 
   @shortdoc "Generates a Plug authorization module"
