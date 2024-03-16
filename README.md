@@ -182,6 +182,10 @@ end
 
 See the docs for more information about configuring application-wide defaults for the plug.
 
+## LiveViews
+
+Authorization checks can be performed in the `mount/3` and `handle_event/3` callbacks of a LiveView. See [the LiveView documentation](https://hexdocs.pm/phoenix_live_view/security-model.html) for hints and examples.
+
 ## Schema Scopes
 
 Bodyguard also provides the `Bodyguard.Schema` behaviour to query which items a user can access. Implement it directly on schema modules.
@@ -252,13 +256,15 @@ assert %{status: 403, message: "not authorized"} = error
     end
     ```
 
-2.  Create up a [fallback controller](#controllers) to render an error on `{:error, :unauthorized}`.
+2.  Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `c:Bodyguard.Policy.authorize/3` callbacks.
 
-3.  Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `c:Bodyguard.Policy.authorize/3` callbacks.
+3.  Create up a [fallback controller](#controllers) to render an error on `{:error, :unauthorized}`.
 
-4.  (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `c:Bodyguard.Schema.scope/3` callbacks.
+### Optional Installation Steps
 
-5.  (Optional) Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
+1.  Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `c:Bodyguard.Schema.scope/3` callbacks.
+
+2.  Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
 
 ## Alternatives
 
