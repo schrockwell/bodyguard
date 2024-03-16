@@ -8,13 +8,13 @@ env:
 
 # https://github.com/elixir-lang/elixir/blob/master/lib/elixir/pages/compatibility-and-deprecations.md
 jobs:
-  elixir_1_12:
+  elixir_1_16:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       matrix:
-        otp: [22.x, 23.x, 24.x]
-        elixir: [1.12.x]
+        otp: [26.x]
+        elixir: [1.16.x]
     steps:
       - uses: actions/checkout@v2
         with:
@@ -25,58 +25,4 @@ jobs:
           elixir-version: ${{matrix.elixir}}
       - run: mix do deps.get, compile --warnings-as-errors
       - run: mix format --dry-run --check-formatted
-      - run: mix test
-
-  elixir_1_11:
-    runs-on: ubuntu-latest
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    strategy:
-      matrix:
-        otp: [21.x, 22.x, 23.x]
-        elixir: [1.11.x]
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: 2.x
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - run: mix do deps.get, compile --warnings-as-errors
-      - run: mix test
-
-  elixir_1_10:
-    runs-on: ubuntu-latest
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    strategy:
-      matrix:
-        otp: [21.x, 22.x]
-        elixir: [1.10.x]
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: 2.x
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - run: mix do deps.get, compile --warnings-as-errors
-      - run: mix test
-
-  elixir_1_9:
-    runs-on: ubuntu-latest
-    name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
-    strategy:
-      matrix:
-        otp: [20.x, 21.x, 22.x]
-        elixir: [1.9.x]
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: 2.x
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{matrix.otp}}
-          elixir-version: ${{matrix.elixir}}
-      - run: mix do deps.get, compile --warnings-as-errors
       - run: mix test
