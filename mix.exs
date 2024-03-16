@@ -33,7 +33,7 @@ defmodule Bodyguard.Mixfile do
   defp description do
     """
     Bodyguard is a simple, flexibile authorization library with a focus
-    on Phoenix 1.3+ apps.
+    on Phoenix apps.
     """
   end
 

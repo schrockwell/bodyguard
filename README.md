@@ -9,11 +9,9 @@
 
 Bodyguard protects the context boundaries of your application. 💪
 
-Version 2 was built from the ground-up to integrate nicely with Phoenix contexts. Authorization callbacks are implemented directly on contexts, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
+Authorization callbacks are implemented directly on context modules, so permissions can be checked from controllers, views, sockets, tests, and even other contexts.
 
-The `Bodyguard.Policy` behaviour is implemented with a single required callback. Additionally, the `Bodyguard.Schema` behaviour provides a convention for limiting query results per-user.
-
-This is an all-new API, so refer to [the `1.x` branch](https://github.com/schrockwell/bodyguard/tree/1.x) for the earlier readme.
+The `Bodyguard.Policy` behaviour has a single required callback, `c:Bodyguard.Policy.authorize/3`. Additionally, the `Bodyguard.Schema` behaviour provides a convention for limiting query results per-user.
 
 - [Docs](https://hexdocs.pm/bodyguard/) ← complete documentation
 - [Hex](https://hex.pm/packages/bodyguard)
@@ -57,14 +55,14 @@ end
 
 ## Policies
 
-To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then define `authorize(action, user, params)` callbacks, which must return:
+To implement a policy, add `@behaviour Bodyguard.Policy` to a context, then define an `authorize(action, user, params)` callback, which must return:
 
 - `:ok` or `true` to permit an action
 - `:error`, `{:error, reason}`, or `false` to deny an action
 
-Don't use these callbacks directly - instead, go through `Bodyguard.permit/4`. This will convert any keyword-list `params` into a map, and will coerce the callback result into a strict `:ok` or `{:error, reason}` result. The default failure `reason` is `:unauthorized` unless specified otherwise in the callback.
+Don't use these callbacks directly - instead, go through `Bodyguard.permit/4`. This will convert keyword-list `params` into a map, and will coerce the callback result into a strict `:ok` or `{:error, reason}` result. The default failure result is `{:error, :unauthorized}`.
 
-Also provided are `Bodyguard.permit?/4` (returns a boolean) and `Bodyguard.permit!/5` (raises `Bodyguard.NotAuthorizedError` on failure).
+Helpers `Bodyguard.permit?/4` and `Bodyguard.permit!/5` are also provided.
 
 ```elixir
 # lib/my_app/blog/blog.ex
@@ -87,7 +85,7 @@ defmodule MyApp.Blog do
 end
 ```
 
-If you prefer more structure, define a dedicated policy module outside of the context, and use `defdelegate`:
+If you want to keep the policy separate from the context, define a dedicated policy module and use `defdelegate`:
 
 ```elixir
 # lib/my_app/blog/blog.ex
@@ -105,13 +103,7 @@ end
 
 ## Controllers
 
-Phoenix 1.3 introduces the `action_fallback` controller macro. This is the recommended way to deal with authorization failures. The fallback controller will handle `{:error, reason}` authorization failures.
-
-If you are using the `Bodyguard.Plug.Authorize` plug, then you must use its `:fallback` option instead, since the plug pipeline will be halted before the controller action is called.
-
-Typically, authorization failure results in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller.
-
-See the section "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass in the `user` to each action.
+The `action_fallback` controller macro is the recommended way to deal with authorization failures. The fallback controller will handle the `{:error, reason}` results from the main conrollers.
 
 ```elixir
 # lib/my_app_web/controllers/fallback_controller.ex
@@ -121,15 +113,35 @@ defmodule MyAppWeb.FallbackController do
   def call(conn, {:error, :unauthorized}) do
     conn
     |> put_status(:forbidden)
-    |> put_view(MyAppWeb.ErrorView)
+    |> put_view(html: MyAppWeb.ErrorHTML)
     |> render(:"403")
   end
 end
+
+# lib/my_app_controllers/page_controller.ex
+defmodule MyAppWeb.PageController do
+  use MyAppWeb, :controller
+
+  # This can be defined here, or in the MyAppWeb.controller/0 macro
+  action_fallback MyAppWeb.FallbackController
+
+  # ...actions here...
+end
 ```
 
-### Where Should I Perform Checks?
+### When Using the Plug
 
-Bodyguard doesn't make any assumptions about where authorization checks are performed. You can do it before calling into the context, or within the context itself. There is a good discussion of the tradeoffs [here](https://dockyard.com/blog/2017/08/01/authorization-for-phoenix-contexts).
+If the `Bodyguard.Plug.Authorize` plug is being used, its `:fallback` option must be specified, since the plug pipeline will be halted before the controller action can be called.
+
+### Returning "404 Not Found"
+
+Typically, failures will result in `{:error, :unauthorized}`. If you wish to deny access without leaking the existence of a particular resource, consider returning `{:error, :not_found}` instead, and handle it separately in the fallback controller as a 404.
+
+### Related Reading
+
+Bodyguard doesn't make any assumptions about where authorization checks are performed. You can do it before calling into the context, or within the context itself. There is a good discussion of the tradeoffs [in this blog post](https://dockyard.com/blog/2017/08/01/authorization-for-phoenix-contexts).
+
+See the section "Overriding `action/2` for custom arguments" in [the Phoenix.Controller docs](https://hexdocs.pm/phoenix/Phoenix.Controller.html) for a clean way to pass in the `user` to each action.
 
 ## Plugs
 
@@ -240,26 +252,13 @@ assert %{status: 403, message: "not authorized"} = error
     end
     ```
 
-2.  Create an error view for handling `403 Forbidden`.
+2.  Create up a [fallback controller](#controllers) to render an error on `{:error, :unauthorized}`.
 
-    ```elixir
-    # lib/my_app_web/views/error_view.ex
-    defmodule MyAppWeb.ErrorView do
-      use MyAppWeb, :view
+3.  Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `c:Bodyguard.Policy.authorize/3` callbacks.
 
-      def render("403.html", _assigns) do
-        "Forbidden"
-      end
-    end
-    ```
+4.  (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `c:Bodyguard.Schema.scope/3` callbacks.
 
-3. Wire up a [fallback controller](#controllers) to render this error view on `{:error, :unauthorized}`.
-
-4. Add `@behaviour Bodyguard.Policy` to contexts that require authorization, and implement `authorize/3` callbacks.
-
-5. (Optional) Add `@behaviour Bodyguard.Schema` on schemas available for user-scoping, and implement `scope/3` callbacks.
-
-6. (Optional) Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
+5.  (Optional) Edit `my_app_web.ex` and add `import Bodyguard` to controllers, views, channels, etc.
 
 ## Alternatives
 
@@ -278,8 +277,4 @@ Join our communities!
 
 ## License
 
-MIT License, Copyright (c) 2017 Rockwell Schrock
-
-## Acknowledgements
-
-Thanks to [Ben Cates](https://github.com/bencates) for helping maintain and mature this library.
+MIT License, Copyright (c) 2024 Rockwell Schrock
