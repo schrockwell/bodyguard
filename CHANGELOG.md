@@ -7,6 +7,10 @@
 - **Deprecation:** addition to API; old behavior maintained with deprecation warning
 - **Change:** breaking change to API
 
+## v2.4.3 - 2024-03-15
+
+- **Fix:** Update dependencies
+
 ## v2.4.2 - 2021-10-22
 
 - **Addition:** Support string actions
