@@ -103,7 +103,7 @@ end
 
 ## Controllers
 
-The `action_fallback` controller macro is the recommended way to deal with authorization failures. The fallback controller will handle the `{:error, reason}` results from the main conrollers.
+The `action_fallback` controller macro is the recommended way to deal with authorization failures. The fallback controller will handle the `{:error, reason}` results from the main controllers.
 
 ```elixir
 # lib/my_app_web/controllers/fallback_controller.ex
